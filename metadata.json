@@ -1,0 +1,6 @@
+{
+  "name": "همیار بحران",
+  "description": "دستیار جامع و آفلاین مدیریت بحران، راهنمای زلزله و حوادث، درخواست کمک اضطراری، نقشه پناهگاه‌ها، کیف اضطراری و برنامه خانواده",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
