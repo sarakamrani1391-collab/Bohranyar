@@ -646,11 +646,22 @@ fun SosScreen(
                 Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                     Text(
                         if (uiState.isOnline) {
-                            "درخواست SOS ثبت می‌شود. برای ارسال موقعیت لحظه‌ای به مخاطبین منتخب، مجوز موقعیت مکانی فقط برای همین جلسه اضطراری درخواست می‌شود."
+                            "درخواست SOS برای بحران «${uiState.selectedCrisisType.titleFa}» ثبت می‌شود."
                         } else {
-                            "به دلیل قطع اینترنت، درخواست در صف آفلاین ثبت می‌شود و می‌توانید فوراً پیامک حاوی موقعیت مکانی خود را برای مخاطبین اضطراری ارسال کنید."
+                            "به دلیل قطع اینترنت، درخواست SOS در صف آفلاین ثبت می‌شود و می‌توانید پیامک اضطراری را فوراً ارسال کنید."
                         }
                     )
+                    Surface(
+                        color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.45f),
+                        shape = RoundedCornerShape(12.dp)
+                    ) {
+                        Text(
+                            text = "توضیح دسترسی موقعیت مکانی: برای کمک به امدادگران و مخاطبین منتخب، مختصات GPS فقط تا زمانی که این وضعیت اضطراری فعال است به‌روزرسانی می‌شود و بلافاصله با لغو یا پایان SOS متوقف خواهد شد.",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurface,
+                            modifier = Modifier.padding(10.dp)
+                        )
+                    }
                     Surface(
                         color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.65f),
                         shape = RoundedCornerShape(12.dp)

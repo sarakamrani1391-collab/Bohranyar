@@ -20,6 +20,7 @@ import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.isActive
@@ -78,7 +79,7 @@ data class SosUiState(
 class SosViewModel(
     private val sosRepository: SosRepository,
     private val familyRepository: FamilyRepository,
-    preferencesRepository: UserPreferencesRepository,
+    private val preferencesRepository: UserPreferencesRepository,
     private val networkMonitor: NetworkMonitor,
     private val locationTracker: SosLocationTracker
 ) : ViewModel() {
@@ -237,18 +238,23 @@ class SosViewModel(
                     hasPermission = permissionNow
                 )
             }
-            val currentState = uiState.value.copy(
-                locationConsentGiven = shareLiveLocation,
-                hasLocationPermission = permissionNow
-            )
+            val form = localFormState.value
+            val settings = runCatching { preferencesRepository.userSettings.first() }
+                .getOrDefault(UserSettings())
             val initialLoc = if (shareLiveLocation && permissionNow) {
                 locationTracker.currentLocation.value
             } else {
                 null
             }
+            val messageText = buildSmsText(
+                form = form,
+                settings = settings,
+                liveLocation = initialLoc,
+                includeLiveLocation = shareLiveLocation && permissionNow
+            )
             val created = sosRepository.createSosRequest(
-                emergencyType = "${currentState.selectedCrisisType.titleFa} - ${currentState.selectedEmergencyType}",
-                message = currentState.buildPreparedSmsText(),
+                emergencyType = "${form.crisisType.titleFa} - ${form.emergencyType}",
+                message = messageText,
                 isOnline = networkMonitor.isOnline.value,
                 latitude = initialLoc?.latitude,
                 longitude = initialLoc?.longitude,
@@ -343,17 +349,39 @@ class SosViewModel(
     }
 
     private suspend fun syncActiveLocationToDb(requestId: Int, snapshot: EmergencyLocationSnapshot) {
-        val latestUi = uiState.value.copy(
+        val form = localFormState.value
+        val settings = runCatching { preferencesRepository.userSettings.first() }
+            .getOrDefault(UserSettings())
+        val updatedMessage = buildSmsText(
+            form = form,
+            settings = settings,
             liveLocation = snapshot,
-            locationConsentGiven = true
+            includeLiveLocation = true
         )
         sosRepository.updateSosLocationAndMessage(
             id = requestId,
             latitude = snapshot.latitude,
             longitude = snapshot.longitude,
             locationConsentGiven = true,
-            updatedMessage = latestUi.buildPreparedSmsText()
+            updatedMessage = updatedMessage
         )
+    }
+
+    private fun buildSmsText(
+        form: SosFormState,
+        settings: UserSettings,
+        liveLocation: EmergencyLocationSnapshot?,
+        includeLiveLocation: Boolean
+    ): String {
+        return SosUiState(
+            selectedCrisisType = form.crisisType,
+            selectedEmergencyType = form.emergencyType,
+            addressNote = form.addressNote,
+            customNote = form.customNote,
+            userSettings = settings,
+            locationConsentGiven = includeLiveLocation,
+            liveLocation = liveLocation
+        ).buildPreparedSmsText()
     }
 
     private fun stopLiveLocationTrackingOnly(nextStatus: SosLocationStatus) {

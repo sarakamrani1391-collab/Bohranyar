@@ -6,14 +6,14 @@ import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.MenuBook
+import androidx.compose.material.icons.automirrored.outlined.MenuBook
 import androidx.compose.material.icons.filled.ChildCare
 import androidx.compose.material.icons.filled.Home
-import androidx.compose.material.icons.filled.MenuBook
 import androidx.compose.material.icons.filled.Science
 import androidx.compose.material.icons.filled.Sos
 import androidx.compose.material.icons.outlined.ChildCare
 import androidx.compose.material.icons.outlined.Home
-import androidx.compose.material.icons.outlined.MenuBook
 import androidx.compose.material.icons.outlined.Science
 import androidx.compose.material.icons.outlined.Sos
 import androidx.compose.material3.Icon
@@ -103,7 +103,7 @@ fun HamyarBohranApp(
 
     val topLevelItems = listOf(
         TopNavItem(AppRoute.Dashboard, "خانه", Icons.Filled.Home, Icons.Outlined.Home, "nav_dashboard"),
-        TopNavItem(AppRoute.CrisisSelection, "بحران‌ها", Icons.Filled.MenuBook, Icons.Outlined.MenuBook, "nav_crises"),
+        TopNavItem(AppRoute.CrisisSelection, "بحران‌ها", Icons.AutoMirrored.Filled.MenuBook, Icons.AutoMirrored.Outlined.MenuBook, "nav_crises"),
         TopNavItem(AppRoute.Sos, "کمک فوری", Icons.Filled.Sos, Icons.Outlined.Sos, "nav_sos", isEmergency = true),
         TopNavItem(AppRoute.Encyclopedia, "دانشنامه", Icons.Filled.Science, Icons.Outlined.Science, "nav_encyclopedia"),
         TopNavItem(AppRoute.Mava, "مأوا", Icons.Filled.ChildCare, Icons.Outlined.ChildCare, "nav_mava")
