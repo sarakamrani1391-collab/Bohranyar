@@ -1,5 +1,7 @@
 package com.example.ui.viewmodel
 
+import android.content.Context
+import android.net.Uri
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.data.local.entity.EmergencyKitItemEntity
@@ -7,6 +9,8 @@ import com.example.data.local.entity.FamilyMemberEntity
 import com.example.data.local.entity.FamilyPlanEntity
 import com.example.data.local.entity.FamilySafetyStatus
 import com.example.data.local.entity.KitCategory
+import com.example.data.local.entity.MediaCategory
+import com.example.data.local.entity.OfflineMediaEntity
 import com.example.data.local.entity.QuizProgressEntity
 import com.example.data.model.QuizQuestion
 import com.example.data.model.QuizTopic
@@ -15,8 +19,7 @@ import com.example.data.preferences.UserPreferencesRepository
 import com.example.data.preferences.UserSettings
 import com.example.data.repository.FamilyRepository
 import com.example.data.repository.KitRepository
-import com.example.data.repository.MapRepository
-import com.example.data.repository.ReportRepository
+import com.example.data.repository.OfflineMediaRepository
 import com.example.data.repository.SosRepository
 import com.example.data.repository.TrainingRepository
 import com.example.data.system.NetworkMonitor
@@ -140,8 +143,11 @@ class KitViewModel(
 
 data class TrainingUiState(
     val lessons: List<TrainingLesson> = emptyList(),
+    val mediaMap: Map<String, OfflineMediaEntity> = emptyMap(),
     val quizTopics: List<QuizTopic> = emptyList(),
     val progressMap: Map<String, QuizProgressEntity> = emptyMap(),
+    val isOnline: Boolean = false,
+    val mediaBannerMessage: String? = null,
     val activeQuizTopic: QuizTopic? = null,
     val activeQuestions: List<QuizQuestion> = emptyList(),
     val currentQuestionIndex: Int = 0,
@@ -151,19 +157,29 @@ data class TrainingUiState(
 )
 
 class TrainingViewModel(
-    private val trainingRepository: TrainingRepository
+    private val trainingRepository: TrainingRepository,
+    private val mediaRepository: OfflineMediaRepository,
+    private val networkMonitor: NetworkMonitor,
+    private val appContext: Context
 ) : ViewModel() {
 
     private val quizSession = MutableStateFlow(QuizSessionState())
+    private val mediaBanner = MutableStateFlow<String?>(null)
 
     val uiState: StateFlow<TrainingUiState> = combine(
         trainingRepository.observeQuizProgress(),
-        quizSession
-    ) { progressList, session ->
+        mediaRepository.observeByCategory(MediaCategory.FIRST_AID),
+        networkMonitor.isOnline,
+        quizSession,
+        mediaBanner
+    ) { progressList, mediaList, online, session, banner ->
         TrainingUiState(
             lessons = trainingRepository.getLessons(),
+            mediaMap = mediaList.associateBy { it.mediaId },
             quizTopics = trainingRepository.getQuizTopics(),
             progressMap = progressList.associateBy { it.topicId },
+            isOnline = online,
+            mediaBannerMessage = banner,
             activeQuizTopic = session.topic,
             activeQuestions = session.questions,
             currentQuestionIndex = session.currentIndex,
@@ -179,6 +195,50 @@ class TrainingViewModel(
             quizTopics = trainingRepository.getQuizTopics()
         )
     )
+
+    fun getLessonById(id: String): TrainingLesson? = trainingRepository.getLessonById(id)
+
+    fun importLocalLessonVideo(mediaId: String, uri: Uri) {
+        viewModelScope.launch {
+            val ok = mediaRepository.importLocalVideo(mediaId, MediaCategory.FIRST_AID, uri)
+            mediaBanner.value = if (ok) {
+                "فایل ویدئویی با موفقیت در حافظه آفلاین ذخیره شد و آماده پخش است."
+            } else {
+                "امکان خواندن فایل ویدئویی انتخاب‌شده وجود نداشت."
+            }
+        }
+    }
+
+    fun downloadLessonVideo(asset: OfflineMediaEntity) {
+        viewModelScope.launch {
+            if (asset.streamUrl.isNullOrBlank()) {
+                mediaBanner.value = "منبع ویدئویی آنلاین این درس هنوز متصل نشده است؛ می‌توانید فایل ویدئویی محلی خودتان را بارگذاری کنید."
+                return@launch
+            }
+            if (!networkMonitor.isOnline.value) {
+                mediaBanner.value = "برای دانلود ویدئو اتصال اینترنت لازم است."
+                return@launch
+            }
+            val ok = mediaRepository.downloadFromSource(asset)
+            mediaBanner.value = if (ok) "ویدئو برای مشاهده آفلاین دانلود شد." else "دانلود ویدئو ناموفق بود."
+        }
+    }
+
+    fun removeOfflineVideo(asset: OfflineMediaEntity) {
+        viewModelScope.launch {
+            mediaRepository.removeOfflineVideo(asset)
+            mediaBanner.value = "فایل ویدئویی آفلاین حذف شد."
+        }
+    }
+
+    fun dismissMediaBanner() {
+        mediaBanner.value = null
+    }
+
+    fun startQuizById(topicId: String) {
+        val topic = trainingRepository.getQuizTopics().firstOrNull { it.id == topicId } ?: return
+        startQuiz(topic)
+    }
 
     fun startQuiz(topic: QuizTopic) {
         val questions = trainingRepository.getQuestionsForTopic(topic.id)
@@ -249,9 +309,7 @@ data class SettingsUiState(
 
 class SettingsViewModel(
     private val preferencesRepository: UserPreferencesRepository,
-    private val mapRepository: MapRepository,
     private val sosRepository: SosRepository,
-    private val reportRepository: ReportRepository,
     private val networkMonitor: NetworkMonitor
 ) : ViewModel() {
 
@@ -281,13 +339,11 @@ class SettingsViewModel(
     fun refreshOfflinePackage() {
         viewModelScope.launch {
             val now = System.currentTimeMillis()
-            mapRepository.refreshOfflineCacheTimestamp(now)
             preferencesRepository.updateOfflineSyncTimestamp(now)
             if (networkMonitor.isOnline.value) {
                 sosRepository.syncQueuedRequests()
-                reportRepository.syncOfflineReports()
             }
-            messageFlow.value = "بسته آفلاین راهنماها، شماره‌ها و نقشه ذخیره شده به‌روزرسانی شد."
+            messageFlow.value = "بسته آفلاین راهنماها، دانشنامه و شماره‌ها در حافظه داخلی به‌روزرسانی شد."
         }
     }
 

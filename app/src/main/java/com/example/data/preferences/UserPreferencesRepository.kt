@@ -22,7 +22,6 @@ data class UserSettings(
     val highContrastMode: Boolean = false,
     val largeTextMode: Boolean = false,
     val darkModeEnabled: Boolean = false,
-    val locationConsentAllowed: Boolean = false,
     val lastOfflineSyncMillis: Long = 0L
 )
 
@@ -37,7 +36,6 @@ class UserPreferencesRepository(private val context: Context) {
         val HIGH_CONTRAST = booleanPreferencesKey("high_contrast_mode")
         val LARGE_TEXT = booleanPreferencesKey("large_text_mode")
         val DARK_MODE = booleanPreferencesKey("dark_mode_enabled")
-        val LOCATION_CONSENT = booleanPreferencesKey("location_consent_allowed")
         val LAST_OFFLINE_SYNC = longPreferencesKey("last_offline_sync_millis")
     }
 
@@ -51,17 +49,15 @@ class UserPreferencesRepository(private val context: Context) {
             highContrastMode = prefs[Keys.HIGH_CONTRAST] ?: false,
             largeTextMode = prefs[Keys.LARGE_TEXT] ?: false,
             darkModeEnabled = prefs[Keys.DARK_MODE] ?: false,
-            locationConsentAllowed = prefs[Keys.LOCATION_CONSENT] ?: false,
             lastOfflineSyncMillis = prefs[Keys.LAST_OFFLINE_SYNC] ?: 0L
         )
     }
 
-    suspend fun completeOnboarding(userName: String, userCity: String, locationConsent: Boolean) {
+    suspend fun completeOnboarding(userName: String, userCity: String) {
         context.dataStore.edit { prefs ->
             prefs[Keys.ONBOARDING_COMPLETED] = true
             prefs[Keys.USER_NAME] = userName.trim()
             if (userCity.isNotBlank()) prefs[Keys.USER_CITY] = userCity.trim()
-            prefs[Keys.LOCATION_CONSENT] = locationConsent
             if ((prefs[Keys.LAST_OFFLINE_SYNC] ?: 0L) == 0L) {
                 prefs[Keys.LAST_OFFLINE_SYNC] = System.currentTimeMillis()
             }
@@ -88,12 +84,6 @@ class UserPreferencesRepository(private val context: Context) {
             prefs[Keys.HIGH_CONTRAST] = highContrast
             prefs[Keys.LARGE_TEXT] = largeText
             prefs[Keys.DARK_MODE] = darkMode
-        }
-    }
-
-    suspend fun setLocationConsent(allowed: Boolean) {
-        context.dataStore.edit { prefs ->
-            prefs[Keys.LOCATION_CONSENT] = allowed
         }
     }
 

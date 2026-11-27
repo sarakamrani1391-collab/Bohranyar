@@ -20,9 +20,6 @@ sealed interface AppRoute {
     data object Sos : AppRoute
 
     @Serializable
-    data object Map : AppRoute
-
-    @Serializable
     data object Family : AppRoute
 
     @Serializable
@@ -32,7 +29,25 @@ sealed interface AppRoute {
     data object Training : AppRoute
 
     @Serializable
-    data object UrbanReports : AppRoute
+    data class FirstAidDetail(val lessonId: String) : AppRoute
+
+    @Serializable
+    data object Encyclopedia : AppRoute
+
+    @Serializable
+    data class EncyclopediaDetail(val topicId: String) : AppRoute
+
+    @Serializable
+    data object WhyItHappens : AppRoute
+
+    @Serializable
+    data object VirtualLab : AppRoute
+
+    @Serializable
+    data object ScenarioLab : AppRoute
+
+    @Serializable
+    data object Mava : AppRoute
 
     @Serializable
     data object Settings : AppRoute

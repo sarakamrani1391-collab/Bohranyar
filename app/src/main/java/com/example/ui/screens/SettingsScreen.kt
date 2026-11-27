@@ -283,13 +283,13 @@ fun SettingsScreen(
                                 Icon(Icons.Filled.Security, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
                                 Spacer(modifier = Modifier.width(8.dp))
                                 Text(
-                                    text = "حریم خصوصی و اطلاعات نمونه",
+                                    text = "حریم خصوصی و ذخیره‌سازی محلی",
                                     style = MaterialTheme.typography.titleMedium,
                                     fontWeight = FontWeight.Bold
                                 )
                             }
                             Text(
-                                text = "اطلاعات خانواده، کیف اضطراری و گزارش‌های شما صرفاً در حافظه محلی دستگاه ذخیره می‌شوند. موقعیت مکانی فقط با درخواست و رضایت صریح شما خوانده می‌شود.",
+                                text = "اطلاعات خانواده، کیف اضطراری، پیشرفت آزمون‌ها و تنظیمات بخش کودکانه مأوا صرفاً در حافظه محلی دستگاه شما ذخیره می‌شوند و هیچ داده مکانی یا شخصی به بیرون ارسال نمی‌شود.",
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )

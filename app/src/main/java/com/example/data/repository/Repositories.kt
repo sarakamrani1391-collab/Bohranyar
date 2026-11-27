@@ -5,34 +5,40 @@ import android.net.Uri
 import com.example.data.local.dao.CrisisChecklistDao
 import com.example.data.local.dao.EmergencyKitDao
 import com.example.data.local.dao.FamilyDao
-import com.example.data.local.dao.ShelterDao
+import com.example.data.local.dao.MavaSettingsDao
+import com.example.data.local.dao.OfflineMediaDao
 import com.example.data.local.dao.SosRequestDao
 import com.example.data.local.dao.TrainingDao
-import com.example.data.local.dao.UrbanReportDao
 import com.example.data.local.entity.CrisisChecklistEntity
 import com.example.data.local.entity.EmergencyKitItemEntity
 import com.example.data.local.entity.FamilyMemberEntity
 import com.example.data.local.entity.FamilyPlanEntity
 import com.example.data.local.entity.FamilySafetyStatus
 import com.example.data.local.entity.KitCategory
+import com.example.data.local.entity.MavaSettingsEntity
+import com.example.data.local.entity.MediaCategory
+import com.example.data.local.entity.MediaDownloadStatus
+import com.example.data.local.entity.OfflineMediaEntity
 import com.example.data.local.entity.QuizProgressEntity
-import com.example.data.local.entity.ShelterPointEntity
-import com.example.data.local.entity.ShelterType
 import com.example.data.local.entity.SosRequestEntity
 import com.example.data.local.entity.SosStatus
-import com.example.data.local.entity.UrbanReportCategory
-import com.example.data.local.entity.UrbanReportEntity
-import com.example.data.local.entity.UrbanReportStatus
 import com.example.data.model.CrisisGuide
 import com.example.data.model.CrisisType
 import com.example.data.model.EmergencyContactNumber
 import com.example.data.model.QuizQuestion
 import com.example.data.model.QuizTopic
-import com.example.data.model.SampleAdvisory
+import com.example.data.model.ScenarioItem
+import com.example.data.model.ScienceCategory
+import com.example.data.model.ScienceTopic
 import com.example.data.model.TrainingLesson
+import com.example.data.model.VirtualLabExperiment
+import com.example.data.model.WhyQuestion
 import com.example.data.seed.CrisisContentSeed
-import com.example.data.system.ImageStorageHelper
+import com.example.data.seed.MavaContentSeed
+import com.example.data.seed.ScienceAndLabSeed
+import com.example.data.system.MediaFileStorageHelper
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.map
 
 class CrisisRepository(
     private val checklistDao: CrisisChecklistDao
@@ -42,8 +48,6 @@ class CrisisRepository(
     fun getGuide(type: CrisisType): CrisisGuide? = CrisisContentSeed.guides[type]
 
     fun getEmergencyNumbers(): List<EmergencyContactNumber> = CrisisContentSeed.emergencyNumbers
-
-    fun getSampleAdvisories(): List<SampleAdvisory> = CrisisContentSeed.sampleAdvisories
 
     fun observeChecklist(crisisType: CrisisType): Flow<List<CrisisChecklistEntity>> =
         checklistDao.getChecklistForCrisis(crisisType.id)
@@ -154,18 +158,15 @@ class SosRepository(
     suspend fun createSosRequest(
         emergencyType: String,
         message: String,
-        latitude: Double?,
-        longitude: Double?,
-        locationConsentGiven: Boolean,
         isOnline: Boolean
     ): SosRequestEntity {
         val status = if (isOnline) SosStatus.SENT_SYNCED else SosStatus.QUEUED_OFFLINE
         val entity = SosRequestEntity(
             emergencyType = emergencyType,
             message = message,
-            latitude = latitude,
-            longitude = longitude,
-            locationConsentGiven = locationConsentGiven,
+            latitude = null,
+            longitude = null,
+            locationConsentGiven = false,
             status = status,
             createdAtMillis = System.currentTimeMillis()
         )
@@ -184,112 +185,19 @@ class SosRepository(
     suspend fun deleteRequest(id: Int) = sosDao.deleteById(id)
 }
 
-class ReportRepository(
-    private val reportDao: UrbanReportDao,
-    private val appContext: Context
-) {
-    fun observeAllReports(): Flow<List<UrbanReportEntity>> = reportDao.getAllReports()
-
-    fun observeQueuedCount(): Flow<Int> = reportDao.countByStatus(UrbanReportStatus.QUEUED_OFFLINE)
-
-    suspend fun submitReport(
-        category: UrbanReportCategory,
-        title: String,
-        description: String,
-        imageUri: Uri?,
-        latitude: Double?,
-        longitude: Double?,
-        locationConsentGiven: Boolean,
-        isOnline: Boolean
-    ) {
-        val savedImagePath = imageUri?.let { ImageStorageHelper.copyImageToInternalStorage(appContext, it) }
-        val status = if (isOnline) {
-            UrbanReportStatus.SUBMITTED_UNVERIFIED
-        } else {
-            UrbanReportStatus.QUEUED_OFFLINE
-        }
-        reportDao.insert(
-            UrbanReportEntity(
-                category = category,
-                title = title.trim(),
-                description = description.trim(),
-                imagePath = savedImagePath,
-                latitude = latitude,
-                longitude = longitude,
-                locationConsentGiven = locationConsentGiven,
-                status = status,
-                isDemoData = false,
-                createdAtMillis = System.currentTimeMillis()
-            )
-        )
-    }
-
-    suspend fun syncOfflineReports() {
-        reportDao.syncOfflineReports(
-            oldStatus = UrbanReportStatus.QUEUED_OFFLINE,
-            newStatus = UrbanReportStatus.SUBMITTED_UNVERIFIED
-        )
-    }
-
-    suspend fun deleteReport(id: Int) = reportDao.deleteById(id)
-
-    suspend fun seedIfNeeded() {
-        if (reportDao.getCount() == 0) {
-            reportDao.insertAll(CrisisContentSeed.defaultSampleReports(System.currentTimeMillis()))
-        }
-    }
-}
-
-class MapRepository(
-    private val shelterDao: ShelterDao
-) {
-    fun observeShelters(): Flow<List<ShelterPointEntity>> = shelterDao.getAllShelters()
-
-    suspend fun addPersonalSafePoint(
-        name: String,
-        address: String,
-        latitude: Double,
-        longitude: Double,
-        note: String
-    ) {
-        shelterDao.insert(
-            ShelterPointEntity(
-                name = name.trim(),
-                type = ShelterType.FAMILY_POINT,
-                address = address.trim(),
-                latitude = latitude,
-                longitude = longitude,
-                capacityNote = note.trim(),
-                phone = "",
-                isVerified = true,
-                isDemoData = false,
-                cachedAtMillis = System.currentTimeMillis()
-            )
-        )
-    }
-
-    suspend fun deleteShelter(id: Int) = shelterDao.deleteById(id)
-
-    suspend fun refreshOfflineCacheTimestamp(timestamp: Long = System.currentTimeMillis()) {
-        shelterDao.updateCacheTimestamp(timestamp)
-    }
-
-    suspend fun seedIfNeeded() {
-        if (shelterDao.getCount() == 0) {
-            shelterDao.insertAll(CrisisContentSeed.defaultSampleShelters(System.currentTimeMillis()))
-        }
-    }
-}
-
 class TrainingRepository(
     private val trainingDao: TrainingDao
 ) {
     fun getLessons(): List<TrainingLesson> = CrisisContentSeed.trainingLessons
 
+    fun getLessonById(id: String): TrainingLesson? =
+        CrisisContentSeed.trainingLessons.firstOrNull { it.id == id }
+
     fun getQuizTopics(): List<QuizTopic> = CrisisContentSeed.quizTopics
 
     fun getQuestionsForTopic(topicId: String): List<QuizQuestion> =
-        CrisisContentSeed.quizQuestions.filter { it.topicId == topicId }
+        CrisisContentSeed.quizQuestions.filter { it.topicId == topicId } +
+            ScienceAndLabSeed.scienceQuizQuestions.filter { it.topicId == topicId }
 
     fun observeQuizProgress(): Flow<List<QuizProgressEntity>> = trainingDao.getAllProgress()
 
@@ -302,5 +210,93 @@ class TrainingRepository(
                 completedAtMillis = System.currentTimeMillis()
             )
         )
+    }
+}
+
+class ScienceAndLabRepository {
+    fun getAllTopics(): List<ScienceTopic> = ScienceAndLabSeed.scienceTopics
+
+    fun getTopicsByCategory(category: ScienceCategory?): List<ScienceTopic> =
+        if (category == null) ScienceAndLabSeed.scienceTopics
+        else ScienceAndLabSeed.scienceTopics.filter { it.category == category }
+
+    fun getTopicById(id: String): ScienceTopic? =
+        ScienceAndLabSeed.scienceTopics.firstOrNull { it.id == id }
+
+    fun getWhyQuestions(): List<WhyQuestion> = ScienceAndLabSeed.whyQuestions
+
+    fun getVirtualLabExperiments(): List<VirtualLabExperiment> = ScienceAndLabSeed.virtualLabExperiments
+
+    fun getScenarios(): List<ScenarioItem> = ScienceAndLabSeed.scenarios
+}
+
+class OfflineMediaRepository(
+    private val mediaDao: OfflineMediaDao,
+    private val appContext: Context
+) {
+    fun observeByCategory(category: MediaCategory): Flow<List<OfflineMediaEntity>> =
+        mediaDao.getByCategory(category)
+
+    fun observeAll(): Flow<List<OfflineMediaEntity>> = mediaDao.getAll()
+
+    fun observeMedia(mediaId: String): Flow<OfflineMediaEntity?> = mediaDao.observeById(mediaId)
+
+    suspend fun seedIfNeeded() {
+        val allAssets = CrisisContentSeed.defaultOfflineMedia() + MavaContentSeed.defaultMavaOfflineMedia()
+        mediaDao.insertMissing(allAssets)
+    }
+
+    suspend fun importLocalVideo(mediaId: String, category: MediaCategory, uri: Uri): Boolean {
+        val saved = MediaFileStorageHelper.importLocalVideo(appContext, mediaId, category, uri)
+        return if (saved != null) {
+            mediaDao.updateLocalFile(
+                mediaId = mediaId,
+                localPath = saved,
+                status = MediaDownloadStatus.DOWNLOADED,
+                updatedAt = System.currentTimeMillis()
+            )
+            true
+        } else {
+            false
+        }
+    }
+
+    suspend fun downloadFromSource(asset: OfflineMediaEntity): Boolean {
+        val url = asset.streamUrl
+        if (url.isNullOrBlank()) return false
+        mediaDao.updateLocalFile(asset.mediaId, asset.localFilePath, MediaDownloadStatus.DOWNLOADING, System.currentTimeMillis())
+        val saved = MediaFileStorageHelper.downloadRemoteVideo(appContext, asset.mediaId, asset.category, url)
+        return if (saved != null) {
+            mediaDao.updateLocalFile(asset.mediaId, saved, MediaDownloadStatus.DOWNLOADED, System.currentTimeMillis())
+            true
+        } else {
+            mediaDao.updateLocalFile(asset.mediaId, null, MediaDownloadStatus.NOT_DOWNLOADED, System.currentTimeMillis())
+            false
+        }
+    }
+
+    suspend fun removeOfflineVideo(asset: OfflineMediaEntity) {
+        MediaFileStorageHelper.deleteLocalVideo(asset.localFilePath)
+        val fallbackStatus = if (asset.streamUrl.isNullOrBlank()) {
+            MediaDownloadStatus.NOT_LINKED
+        } else {
+            MediaDownloadStatus.NOT_DOWNLOADED
+        }
+        mediaDao.updateLocalFile(asset.mediaId, null, fallbackStatus, System.currentTimeMillis())
+    }
+}
+
+class MavaRepository(
+    private val settingsDao: MavaSettingsDao
+) {
+    fun observeSettings(): Flow<MavaSettingsEntity> =
+        settingsDao.observeSettings().map { it ?: MavaSettingsEntity() }
+
+    suspend fun saveSettings(settings: MavaSettingsEntity) {
+        settingsDao.upsert(settings.copy(updatedAtMillis = System.currentTimeMillis()))
+    }
+
+    suspend fun seedIfNeeded() {
+        settingsDao.upsert(MavaSettingsEntity())
     }
 }

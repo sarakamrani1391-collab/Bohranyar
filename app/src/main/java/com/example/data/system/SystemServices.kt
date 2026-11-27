@@ -1,37 +1,30 @@
 package com.example.data.system
 
-import android.Manifest
-import android.annotation.SuppressLint
 import android.content.Context
-import android.content.pm.PackageManager
-import android.location.Location
-import android.location.LocationManager
+import android.media.AudioAttributes
+import android.media.AudioFormat
+import android.media.AudioTrack
 import android.net.ConnectivityManager
 import android.net.Network
 import android.net.NetworkCapabilities
 import android.net.NetworkRequest
 import android.net.Uri
-import androidx.core.content.ContextCompat
-import com.google.android.gms.location.LocationServices
-import com.google.android.gms.location.Priority
-import com.google.android.gms.tasks.CancellationTokenSource
+import com.example.data.local.entity.MediaCategory
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.suspendCancellableCoroutine
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.io.File
+import java.net.HttpURLConnection
+import java.net.URL
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
-import java.util.UUID
-import kotlin.coroutines.resume
-import kotlin.math.atan2
-import kotlin.math.cos
-import kotlin.math.pow
 import kotlin.math.sin
-import kotlin.math.sqrt
 
 class NetworkMonitor(context: Context) {
     private val connectivityManager =
@@ -73,125 +66,137 @@ class NetworkMonitor(context: Context) {
     }
 }
 
-data class UserLocationSnapshot(
-    val latitude: Double,
-    val longitude: Double,
-    val accuracyMeters: Float,
-    val timestampMillis: Long,
-    val sourceLabel: String
-)
-
-class LocationTracker(private val context: Context) {
-    private val fusedClient = LocationServices.getFusedLocationProviderClient(context)
-
-    fun hasLocationPermission(): Boolean {
-        val fine = ContextCompat.checkSelfPermission(
-            context,
-            Manifest.permission.ACCESS_FINE_LOCATION
-        ) == PackageManager.PERMISSION_GRANTED
-        val coarse = ContextCompat.checkSelfPermission(
-            context,
-            Manifest.permission.ACCESS_COARSE_LOCATION
-        ) == PackageManager.PERMISSION_GRANTED
-        return fine || coarse
+object MediaFileStorageHelper {
+    private fun directoryFor(context: Context, category: MediaCategory): File {
+        val sub = when (category) {
+            MediaCategory.FIRST_AID -> "media/first_aid"
+            MediaCategory.MAVA_CARTOON -> "media/mava_cartoons"
+        }
+        return File(context.filesDir, sub).apply { mkdirs() }
     }
 
-    @SuppressLint("MissingPermission")
-    suspend fun getCurrentLocation(): UserLocationSnapshot? {
-        if (!hasLocationPermission()) return null
-
-        val fusedResult = suspendCancellableCoroutine<Location?> { cont ->
-            val cancellation = CancellationTokenSource()
-            cont.invokeOnCancellation { cancellation.cancel() }
-            try {
-                fusedClient.getCurrentLocation(Priority.PRIORITY_BALANCED_POWER_ACCURACY, cancellation.token)
-                    .addOnSuccessListener { location ->
-                        if (location != null) {
-                            cont.resume(location)
-                        } else {
-                            fusedClient.lastLocation
-                                .addOnSuccessListener { last -> cont.resume(last) }
-                                .addOnFailureListener { cont.resume(null) }
-                        }
-                    }
-                    .addOnFailureListener {
-                        cont.resume(null)
-                    }
-            } catch (_: Exception) {
-                cont.resume(null)
-            }
-        }
-
-        if (fusedResult != null) {
-            return UserLocationSnapshot(
-                latitude = fusedResult.latitude,
-                longitude = fusedResult.longitude,
-                accuracyMeters = fusedResult.accuracy,
-                timestampMillis = fusedResult.time.takeIf { it > 0 } ?: System.currentTimeMillis(),
-                sourceLabel = "GPS / شبکه"
-            )
-        }
-
-        // Fallback to Android LocationManager cached provider
-        return try {
-            val lm = context.getSystemService(Context.LOCATION_SERVICE) as LocationManager
-            val providers = listOf(
-                LocationManager.GPS_PROVIDER,
-                LocationManager.NETWORK_PROVIDER,
-                LocationManager.PASSIVE_PROVIDER
-            )
-            val best = providers.mapNotNull { provider ->
-                runCatching { lm.getLastKnownLocation(provider) }.getOrNull()
-            }.maxByOrNull { it.time }
-            best?.let {
-                UserLocationSnapshot(
-                    latitude = it.latitude,
-                    longitude = it.longitude,
-                    accuracyMeters = it.accuracy,
-                    timestampMillis = it.time.takeIf { t -> t > 0 } ?: System.currentTimeMillis(),
-                    sourceLabel = "آخرین موقعیت ذخیره‌شده دستگاه"
-                )
-            }
+    suspend fun importLocalVideo(
+        context: Context,
+        mediaId: String,
+        category: MediaCategory,
+        sourceUri: Uri
+    ): String? = withContext(Dispatchers.IO) {
+        try {
+            val outFile = File(directoryFor(context, category), "${mediaId}.mp4")
+            context.contentResolver.openInputStream(sourceUri)?.use { input ->
+                outFile.outputStream().use { output ->
+                    input.copyTo(output)
+                }
+            } ?: return@withContext null
+            outFile.absolutePath
         } catch (_: Exception) {
             null
         }
     }
-}
 
-object ImageStorageHelper {
-    suspend fun copyImageToInternalStorage(context: Context, uri: Uri): String? =
-        withContext(Dispatchers.IO) {
-            try {
-                val dir = File(context.filesDir, "report_images").apply { mkdirs() }
-                val file = File(dir, "report_${UUID.randomUUID()}.jpg")
-                context.contentResolver.openInputStream(uri)?.use { input ->
-                    file.outputStream().use { output ->
-                        input.copyTo(output)
-                    }
-                } ?: return@withContext null
-                file.absolutePath
-            } catch (_: Exception) {
-                null
+    suspend fun downloadRemoteVideo(
+        context: Context,
+        mediaId: String,
+        category: MediaCategory,
+        streamUrl: String
+    ): String? = withContext(Dispatchers.IO) {
+        try {
+            val conn = (URL(streamUrl).openConnection() as HttpURLConnection).apply {
+                connectTimeout = 15_000
+                readTimeout = 30_000
             }
+            if (conn.responseCode !in 200..299) {
+                conn.disconnect()
+                return@withContext null
+            }
+            val outFile = File(directoryFor(context, category), "${mediaId}.mp4")
+            conn.inputStream.use { input ->
+                outFile.outputStream().use { output ->
+                    input.copyTo(output)
+                }
+            }
+            conn.disconnect()
+            outFile.absolutePath
+        } catch (_: Exception) {
+            null
         }
-}
-
-object GeoDistanceHelper {
-    fun haversineKm(lat1: Double, lon1: Double, lat2: Double, lon2: Double): Double {
-        val r = 6371.0
-        val dLat = Math.toRadians(lat2 - lat1)
-        val dLon = Math.toRadians(lon2 - lon1)
-        val a = sin(dLat / 2).pow(2) +
-            cos(Math.toRadians(lat1)) * cos(Math.toRadians(lat2)) * sin(dLon / 2).pow(2)
-        val c = 2 * atan2(sqrt(a), sqrt(1 - a))
-        return r * c
     }
 
-    fun formatDistanceFa(km: Double): String {
-        return if (km < 1.0) {
-            "${(km * 1000).toInt()} متر"
-        } else {
-            String.format(Locale.US, "%.1f کیلومتر", km)
+    suspend fun deleteLocalVideo(localPath: String?): Boolean = withContext(Dispatchers.IO) {
+        if (localPath.isNullOrBlank()) return@withContext false
+        runCatching { File(localPath).delete() }.getOrDefault(false)
+    }
+}
+
+/**
+ * Generates soft, soothing sine-wave chimes for Ma'va toddlers without sudden/loud sounds
+ * or external copyrighted audio files.
+ */
+object MavaSoundEngine {
+    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+
+    fun playGentleChime(freqHz: Double = 523.25, durationMs: Int = 260, enabled: Boolean = true) {
+        if (!enabled) return
+        scope.launch {
+            playTone(freqHz, durationMs, amplitude = 0.14)
+        }
+    }
+
+    fun playHappyMelody(enabled: Boolean = true) {
+        if (!enabled) return
+        scope.launch {
+            playTone(523.25, 160, 0.12)
+            playTone(659.25, 160, 0.12)
+            playTone(783.99, 240, 0.12)
+        }
+    }
+
+    fun playCalmLullabyNote(step: Int, enabled: Boolean = true) {
+        if (!enabled) return
+        val pentatonic = listOf(261.63, 293.66, 329.63, 392.00, 440.00, 392.00, 329.63)
+        val freq = pentatonic[step % pentatonic.size]
+        scope.launch {
+            playTone(freq, 420, amplitude = 0.09)
+        }
+    }
+
+    private fun playTone(freqHz: Double, durationMs: Int, amplitude: Double) {
+        try {
+            val sampleRate = 22050
+            val count = (sampleRate * durationMs) / 1000
+            val samples = ShortArray(count)
+            for (i in 0 until count) {
+                val env = when {
+                    i < count * 0.15 -> i / (count * 0.15)
+                    i > count * 0.70 -> (count - i) / (count * 0.30)
+                    else -> 1.0
+                }.coerceIn(0.0, 1.0)
+                val angle = 2.0 * Math.PI * i * freqHz / sampleRate
+                samples[i] = (sin(angle) * env * amplitude * Short.MAX_VALUE).toInt().toShort()
+            }
+            val track = AudioTrack.Builder()
+                .setAudioAttributes(
+                    AudioAttributes.Builder()
+                        .setUsage(AudioAttributes.USAGE_MEDIA)
+                        .setContentType(AudioAttributes.CONTENT_TYPE_MUSIC)
+                        .build()
+                )
+                .setAudioFormat(
+                    AudioFormat.Builder()
+                        .setEncoding(AudioFormat.ENCODING_PCM_16BIT)
+                        .setSampleRate(sampleRate)
+                        .setChannelMask(AudioFormat.CHANNEL_OUT_MONO)
+                        .build()
+                )
+                .setBufferSizeInBytes(samples.size * 2)
+                .setTransferMode(AudioTrack.MODE_STATIC)
+                .build()
+            track.write(samples, 0, samples.size)
+            track.play()
+            Thread.sleep(durationMs.toLong() + 40L)
+            track.release()
+        } catch (_: Exception) {
+            // Audio device unavailable in headless tests
         }
     }
 }

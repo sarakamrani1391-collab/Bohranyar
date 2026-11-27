@@ -6,16 +6,17 @@ import com.example.data.preferences.UserPreferencesRepository
 import com.example.data.repository.CrisisRepository
 import com.example.data.repository.FamilyRepository
 import com.example.data.repository.KitRepository
-import com.example.data.repository.MapRepository
-import com.example.data.repository.ReportRepository
+import com.example.data.repository.MavaRepository
+import com.example.data.repository.OfflineMediaRepository
+import com.example.data.repository.ScienceAndLabRepository
 import com.example.data.repository.SosRepository
 import com.example.data.repository.TrainingRepository
-import com.example.data.system.LocationTracker
 import com.example.data.system.NetworkMonitor
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 
 class AppContainer(application: Application) {
@@ -23,15 +24,15 @@ class AppContainer(application: Application) {
 
     val preferencesRepository = UserPreferencesRepository(application)
     val networkMonitor = NetworkMonitor(application)
-    val locationTracker = LocationTracker(application)
 
     val crisisRepository = CrisisRepository(database.crisisChecklistDao())
     val kitRepository = KitRepository(database.emergencyKitDao())
     val familyRepository = FamilyRepository(database.familyDao())
     val sosRepository = SosRepository(database.sosRequestDao())
-    val reportRepository = ReportRepository(database.urbanReportDao(), application)
-    val mapRepository = MapRepository(database.shelterDao())
     val trainingRepository = TrainingRepository(database.trainingDao())
+    val scienceAndLabRepository = ScienceAndLabRepository()
+    val offlineMediaRepository = OfflineMediaRepository(database.offlineMediaDao(), application)
+    val mavaRepository = MavaRepository(database.mavaSettingsDao())
 }
 
 class CrisisApplication : Application() {
@@ -47,17 +48,15 @@ class CrisisApplication : Application() {
         appScope.launch {
             container.crisisRepository.seedIfNeeded()
             container.kitRepository.seedIfNeeded()
-            container.mapRepository.seedIfNeeded()
-            container.reportRepository.seedIfNeeded()
+            container.offlineMediaRepository.seedIfNeeded()
             container.preferencesRepository.updateOfflineSyncTimestamp()
         }
 
-        // Automatically transition queued offline SOS requests & reports when connectivity is restored
+        // Automatically transition queued offline SOS requests when connectivity is restored
         appScope.launch {
             container.networkMonitor.isOnline.collectLatest { online ->
                 if (online) {
                     container.sosRepository.syncQueuedRequests()
-                    container.reportRepository.syncOfflineReports()
                     container.preferencesRepository.updateOfflineSyncTimestamp()
                 }
             }

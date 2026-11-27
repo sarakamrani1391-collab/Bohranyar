@@ -3,17 +3,14 @@ package com.example.data.seed
 import com.example.data.local.entity.CrisisChecklistEntity
 import com.example.data.local.entity.EmergencyKitItemEntity
 import com.example.data.local.entity.KitCategory
-import com.example.data.local.entity.ShelterPointEntity
-import com.example.data.local.entity.ShelterType
-import com.example.data.local.entity.UrbanReportCategory
-import com.example.data.local.entity.UrbanReportEntity
-import com.example.data.local.entity.UrbanReportStatus
+import com.example.data.local.entity.MediaCategory
+import com.example.data.local.entity.MediaDownloadStatus
+import com.example.data.local.entity.OfflineMediaEntity
 import com.example.data.model.CrisisGuide
 import com.example.data.model.CrisisType
 import com.example.data.model.EmergencyContactNumber
 import com.example.data.model.QuizQuestion
 import com.example.data.model.QuizTopic
-import com.example.data.model.SampleAdvisory
 import com.example.data.model.TrainingLesson
 
 object CrisisContentSeed {
@@ -26,23 +23,6 @@ object CrisisContentSeed {
         EmergencyContactNumber("gas", "امداد گاز", "194", "نشت گاز، بوی گاز و قطع ایمن", isPrimary = false),
         EmergencyContactNumber("power", "حوادث برق", "121", "قطع برق، سقوط سیم و ترانس", isPrimary = false),
         EmergencyContactNumber("water", "امداد آب و فاضلاب", "122", "ترکیدگی لوله و آب‌گرفتگی شبکه", isPrimary = false)
-    )
-
-    val sampleAdvisories: List<SampleAdvisory> = listOf(
-        SampleAdvisory(
-            id = "demo_adv_1",
-            title = "نمونه اطلاعیه تمرینی آمادگی زلزله",
-            body = "این مورد یک نمونه آزمایشی برای نمایش ساختار اطلاعیه‌هاست. در نسخه بدون اتصال به سرور رسمی، هیچ هشدار واقعی دریافت نشده است.",
-            levelLabel = "داده آزمایشی / نمونه",
-            isDemoData = true
-        ),
-        SampleAdvisory(
-            id = "demo_adv_2",
-            title = "نمونه توصیه پیشگیرانه بارندگی و آب‌گرفتگی",
-            body = "پاکسازی آبروها و بررسی کیف اضطراری به صورت دوره‌ای توصیه می‌شود. اطلاعات رسمی را تنها از منابع معتبر پیگیری کنید.",
-            levelLabel = "داده آزمایشی / نمونه",
-            isDemoData = true
-        )
     )
 
     val guides: Map<CrisisType, CrisisGuide> = mapOf(
@@ -129,7 +109,7 @@ object CrisisContentSeed {
                 "استفاده از آسانسور به جای راه‌پله اضطراری."
             ),
             safetyWarnings = listOf(
-                "هشدار: اگر لباس شما آتش گرفت، ندوید! بایستید، روی زمین دراز بکشید و بغلتید (Stop, Drop, Roll).",
+                "هشدار: اگر لباس شما آتش گرفت، ندوید! بایستید، روی زمین دراز بکشید و بغلتید.",
                 "گازهای سمی ناشی از دود در حریق‌های خانگی خطرناک‌تر از خود شعله هستند."
             ),
             recommendedTrainingId = "first_aid_burns"
@@ -148,8 +128,7 @@ object CrisisContentSeed {
             ),
             afterActions = listOf(
                 "به سیم‌های برق قطع‌شده یا آویزان دست نزنید و حداقل ۱۰ متر فاصله بگیرید.",
-                "سقف، دودکش‌ها و شاخه‌های شکسته اطراف منزل را به دقت بررسی کنید.",
-                "خسارات شهری و انسداد معابر را از بخش گزارش مشکلات شهری ثبت کنید."
+                "سقف، دودکش‌ها و شاخه‌های شکسته اطراف منزل را به دقت بررسی کنید."
             ),
             commonMistakes = listOf(
                 "پناه‌گرفتن زیر درختان تنومند هنگام رعدوبرق.",
@@ -159,7 +138,7 @@ object CrisisContentSeed {
             safetyWarnings = listOf(
                 "هشدار: تندبادهای ناگهانی می‌توانند اشیای سنگین را پرتاب کنند؛ تنها در فضای سرپوشیده ایمن بمانید."
             ),
-            recommendedTrainingId = "crisis_safety_principles"
+            recommendedTrainingId = "crisis_stress_management"
         ),
         CrisisType.SNOW_BLIZZARD to CrisisGuide(
             type = CrisisType.SNOW_BLIZZARD,
@@ -186,7 +165,7 @@ object CrisisContentSeed {
             safetyWarnings = listOf(
                 "هشدار: مسمومیت با مونوکسید کربن بی‌بو و بی‌رنگ است؛ تهویه ایمن وسایل گرمایشی حیاتی است."
             ),
-            recommendedTrainingId = "first_aid_poisoning"
+            recommendedTrainingId = "first_aid_co_poisoning"
         ),
         CrisisType.POWER_OUTAGE to CrisisGuide(
             type = CrisisType.POWER_OUTAGE,
@@ -213,7 +192,7 @@ object CrisisContentSeed {
             safetyWarnings = listOf(
                 "هشدار: هرگز ژنراتور را در فضای سرپوشیده روشن نکنید؛ گاز مونوکسید کربن کشنده است."
             ),
-            recommendedTrainingId = "crisis_safety_principles"
+            recommendedTrainingId = "crisis_stress_management"
         ),
         CrisisType.AIR_POLLUTION to CrisisGuide(
             type = CrisisType.AIR_POLLUTION,
@@ -240,7 +219,7 @@ object CrisisContentSeed {
             safetyWarnings = listOf(
                 "هشدار: بیماران آسمی و قلبی در روزهای شاخص ناسالم باید برنامه درمانی خود را دقیق دنبال کنند."
             ),
-            recommendedTrainingId = "crisis_safety_principles"
+            recommendedTrainingId = "first_aid_choking"
         ),
         CrisisType.URBAN_INCIDENT to CrisisGuide(
             type = CrisisType.URBAN_INCIDENT,
@@ -252,11 +231,10 @@ object CrisisContentSeed {
             duringActions = listOf(
                 "در نشت گاز: هیچ کلید برقی را روشن یا خاموش نکنید، پنجره‌ها را باز کنید، شیر گاز را ببندید و از ساختمان خارج شوید.",
                 "در تصادفات یا ریزش سازه: از تجمع در محل حادثه خودداری کنید تا مسیر خودروهای امدادی باز بماند.",
-                "در حوادث زیرساختی یا گودبرداری، محیط خطر را با فاصله ایمن ترک کرده و گزارش ثبت کنید."
+                "در حوادث زیرساختی یا گودبرداری، محیط خطر را با فاصله ایمن ترک کنید."
             ),
             afterActions = listOf(
                 "از انتشار اخبار تأییدنشده و شایعات خودداری کنید و تنها به منابع رسمی اعتماد کنید.",
-                "در صورت مشاهده انسداد یا خرابی معبر، گزارش مستند در بخش گزارش مشکلات شهری ثبت نمایید.",
                 "به نیروهای امدادی اجازه دهید عملیات ایمن‌سازی را کامل انجام دهند."
             ),
             commonMistakes = listOf(
@@ -339,331 +317,282 @@ object CrisisContentSeed {
     }
 
     fun defaultKitItems(): List<EmergencyKitItemEntity> = listOf(
-        // غذایی و آب
         EmergencyKitItemEntity(name = "آب آشامیدنی بسته‌بندی (حداقل ۳ لیتر برای هر نفر در روز)", category = KitCategory.FOOD_WATER, quantity = "۹ لیتر / نفر", isPrepared = false),
         EmergencyKitItemEntity(name = "کنسروهای آماده مصرف بدون نیاز به پخت + دربازکن", category = KitCategory.FOOD_WATER, quantity = "۶ عدد", isPrepared = false),
         EmergencyKitItemEntity(name = "خرما، مغزیجات، بیسکویت خشک و غذای پرانرژی", category = KitCategory.FOOD_WATER, quantity = "۳ بسته", isPrepared = false),
         EmergencyKitItemEntity(name = "غذای ویژه نوزاد، سالمند یا بیمار در صورت نیاز", category = KitCategory.FOOD_WATER, quantity = "به میزان لازم", isPrepared = false),
 
-        // کمک‌های اولیه و دارو
         EmergencyKitItemEntity(name = "باند کشی، گاز استریل، چسب زخم و بتادین", category = KitCategory.FIRST_AID, quantity = "۱ ست کامل", isPrepared = false),
         EmergencyKitItemEntity(name = "داروهای شخصی ضروری خانواده (حداقل برای ۷ روز)", category = KitCategory.FIRST_AID, quantity = "نسخه ۷ روزه", isPrepared = false),
         EmergencyKitItemEntity(name = "مسکن ساده، قرص ORS و پماد سوختگی", category = KitCategory.FIRST_AID, quantity = "۱ بسته", isPrepared = false),
         EmergencyKitItemEntity(name = "قیچی پانسمان، پنس، دستکش لاتکس و دماسنج", category = KitCategory.FIRST_AID, quantity = "۱ ست", isPrepared = false),
 
-        // ارتباطی و ابزار
         EmergencyKitItemEntity(name = "چراغ‌قوه LED با باتری اضافه یا شارژی", category = KitCategory.COMMUNICATION, quantity = "۲ عدد", isPrepared = false),
         EmergencyKitItemEntity(name = "پاوربانک پرشده و کابل شارژ مقاوم", category = KitCategory.COMMUNICATION, quantity = "۱ عدد (۲۰ هزار)", isPrepared = false),
         EmergencyKitItemEntity(name = "سوت امدادی برای اعلام موقعیت زیر آوار", category = KitCategory.COMMUNICATION, quantity = "۱ عدد برای هر نفر", isPrepared = false),
         EmergencyKitItemEntity(name = "رادیوی جیبی باتری‌خور برای دریافت اخبار رسمی در قطعی اینترنت", category = KitCategory.COMMUNICATION, quantity = "۱ دستگاه", isPrepared = false),
         EmergencyKitItemEntity(name = "کپی مدارک هویتی، پول نقد و شماره تماس‌های خانواده در کاور ضدآب", category = KitCategory.COMMUNICATION, quantity = "۱ پوشه", isPrepared = false),
 
-        // بهداشتی
         EmergencyKitItemEntity(name = "ماسک تنفسی استاندارد N95 برای گردوغبار و دود", category = KitCategory.HYGIENE, quantity = "۱۰ عدد", isPrepared = false),
         EmergencyKitItemEntity(name = "ژل ضدعفونی‌کننده دست و دستمال مرطوب", category = KitCategory.HYGIENE, quantity = "۲ عدد", isPrepared = false),
         EmergencyKitItemEntity(name = "کیسه زباله مقاوم، دستمال کاغذی و اقلام بهداشتی شخصی", category = KitCategory.HYGIENE, quantity = "۱ بسته", isPrepared = false),
         EmergencyKitItemEntity(name = "پتوی فویل حرارتی (پتوی نجات) و پانچو بارانی", category = KitCategory.HYGIENE, quantity = "۲ عدد", isPrepared = false)
     )
 
-    fun defaultSampleShelters(nowMillis: Long): List<ShelterPointEntity> = listOf(
-        ShelterPointEntity(
-            name = "بیمارستان نمونه مرکزی (داده آزمایشی)",
-            type = ShelterType.HOSPITAL,
-            address = "منطقه مرکزی - بلوار سلامت (نقطه نمونه برای نمایش ساختار نقشه)",
-            latitude = 35.7020,
-            longitude = 51.3910,
-            capacityNote = "بخش اورژانس فعال ۲۴ ساعته (نمونه)",
-            phone = "115",
-            isVerified = false,
-            isDemoData = true,
-            cachedAtMillis = nowMillis
-        ),
-        ShelterPointEntity(
-            name = "پایگاه امداد هلال احمر منطقه (داده آزمایشی)",
-            type = ShelterType.RELIEF_CENTER,
-            address = "خیابان امداد، تقاطع میدان قدس (نقطه نمونه)",
-            latitude = 35.6960,
-            longitude = 51.4025,
-            capacityNote = "اقلام امدادی و اسکان اضطراری (نمونه)",
-            phone = "112",
-            isVerified = false,
-            isDemoData = true,
-            cachedAtMillis = nowMillis
-        ),
-        ShelterPointEntity(
-            name = "بوستان و فضای باز اسکان امن (داده آزمایشی)",
-            type = ShelterType.SAFE_ZONE,
-            address = "بلوار سبز، پارک بزرگ شهر (نقطه نمونه)",
-            latitude = 35.7085,
-            longitude = 51.3845,
-            capacityNote = "فضای باز بدون ساختمان مرتفع اطراف (نمونه)",
-            phone = "",
-            isVerified = false,
-            isDemoData = true,
-            cachedAtMillis = nowMillis
-        ),
-        ShelterPointEntity(
-            name = "ایستگاه آتش‌نشانی شماره ۱ (داده آزمایشی)",
-            type = ShelterType.RELIEF_CENTER,
-            address = "خیابان آزادی، نبش کوچه ایمنی (نقطه نمونه)",
-            latitude = 35.6915,
-            longitude = 51.3790,
-            capacityNote = "واحد واکنش سریع نجات شهری (نمونه)",
-            phone = "125",
-            isVerified = false,
-            isDemoData = true,
-            cachedAtMillis = nowMillis
-        )
-    )
-
-    fun defaultSampleReports(nowMillis: Long): List<UrbanReportEntity> = listOf(
-        UrbanReportEntity(
-            category = UrbanReportCategory.ROAD_BLOCKAGE,
-            title = "نمونه گزارش: انسداد موقت خیابان فرعی",
-            description = "این رکورد یک داده آزمایشی برای نمایش ساختار پیگیری گزارش‌هاست و وضعیت رسمی شهر را نشان نمی‌دهد.",
-            imagePath = null,
-            latitude = 35.7010,
-            longitude = 51.3940,
-            locationConsentGiven = false,
-            status = UrbanReportStatus.SUBMITTED_UNVERIFIED,
-            isDemoData = true,
-            createdAtMillis = nowMillis - 3600_000L
-        ),
-        UrbanReportEntity(
-            category = UrbanReportCategory.FLOODING,
-            title = "نمونه گزارش: آب‌گرفتگی زیرگذر",
-            description = "رکورد آزمایشی برای آزمایش فیلتر و برچسب‌گذاری اطلاعات تأییدنشده.",
-            imagePath = null,
-            latitude = 35.6945,
-            longitude = 51.3880,
-            locationConsentGiven = false,
-            status = UrbanReportStatus.SUBMITTED_UNVERIFIED,
-            isDemoData = true,
-            createdAtMillis = nowMillis - 7200_000L
-        )
-    )
-
+    // All 7 required First Aid & Crisis training lessons
     val trainingLessons: List<TrainingLesson> = listOf(
         TrainingLesson(
             id = "first_aid_bleeding",
-            title = "کنترل خونریزی و پانسمان اضطراری",
+            mediaId = "vid_first_aid_bleeding",
+            title = "۱. کنترل خونریزی و پانسمان اضطراری",
             category = "کمک‌های اولیه",
             durationMinutes = 4,
-            summary = "اصول پایه مهار خونریزی شدید با فشار مستقیم تا رسیدن نیروهای اورژانس.",
+            summary = "اصول پایه مهار خونریزی با فشار مستقیم و تمیز تا رسیدن نیروهای اورژانس.",
             steps = listOf(
-                "در صورت امکان دستکش یک‌بارمصرف بپوشید و ایمنی صحنه را بررسی کنید.",
+                "ابتدا ایمنی صحنه را بررسی کنید و در صورت دسترسی دستکش یک‌بارمصرف بپوشید.",
                 "با گاز استریل یا پارچه تمیز، فشار مستقیم و مداوم روی محل زخم وارد کنید.",
-                "در صورت خیس‌شدن پانسمان، لایه اول را برندارید؛ لایه جدید روی آن بگذارید.",
-                "اگر شکستگی مشکوک نیست، عضو آسیب‌دیده را کمی بالاتر از سطح قلب نگه دارید."
+                "در صورت خیس‌شدن پانسمان، لایه اول را برندارید؛ لایه جدید روی آن اضافه کنید تا لخته تخریب نشود.",
+                "اگر آسیب در اندام است و شکستگی مشکوک نیست، عضو را آرام بالاتر از سطح قلب نگه دارید."
             ),
-            warningNote = "از بستن شریان‌بند (تورنیکه) بدون آموزش تخصصی خودداری کنید مگر در خونریزی‌های کنترل‌نشدنی تهدیدکننده حیات.",
-            sourceNote = "برگرفته از اصول عمومی کمک‌های اولیه هلال احمر و صلیب سرخ",
-            relatedCrisis = CrisisType.EARTHQUAKE
+            warningNote = "از بستن شریان‌بند (تورنیکه) بدون آموزش تخصصی پرهیز کنید؛ این آموزش جایگزین دوره‌های عملی امداد نیست.",
+            sourceNote = "اصول عمومی کمک‌های اولیه جمعیت هلال احمر و دستورالعمل پایه صلیب سرخ (IFRC)",
+            lastReviewedDate = "بازبینی علمی: آذر ۱۴۰۵",
+            relatedCrisis = CrisisType.EARTHQUAKE,
+            relatedQuizTopicId = "quiz_bleeding"
         ),
         TrainingLesson(
             id = "first_aid_cpr",
-            title = "آشنایی با احیای قلبی-ریوی پایه (CPR)",
+            mediaId = "vid_first_aid_cpr",
+            title = "۲. احیای قلبی-ریوی پایه (CPR)",
             category = "کمک‌های اولیه",
             durationMinutes = 6,
-            summary = "مراحل اولیه ارزیابی هوشیاری، تماس با ۱۱۵ و ماساژ قلبی برای افراد بالغ.",
+            summary = "ارزیابی هوشیاری، تماس فوری با ۱۱۵ و مراحل ماساژ قلبی استاندارد برای بزرگسالان.",
             steps = listOf(
-                "ایمنی محیط را چک کرده و با ضربه آرام به شانه و صدا زدن بلند، هوشیاری فرد را بسنجید.",
-                "در صورت عدم پاسخ و نبود تنفس طبیعی، فوراً با ۱۱۵ تماس بگیرید و بلندگو را روشن کنید.",
-                "کف یک دست را در مرکز قفسه سینه بگذارید و دست دیگر را روی آن قفل کنید.",
-                "با آرنج صاف، فشار منظم و عمودی (حدود ۱۰۰ تا ۱۲۰ بار در دقیقه) وارد کنید تا امداد برسد."
+                "ایمنی محیط را بسنجید، به آرامی به شانه فرد ضربه بزنید و با صدای بلند او را صدا کنید.",
+                "در صورت عدم پاسخ و نبود تنفس طبیعی، فوراً با ۱۱۵ تماس بگیرید و بلندگو را فعال کنید.",
+                "پاشنه یک دست را در مرکز قفسه سینه بگذارید و دست دیگر را روی آن قفل کنید.",
+                "با بازوهای صاف، فشار عمودی و منظم (حدود ۱۰۰ تا ۱۲۰ بار در دقیقه، عمق ۵ سانتی‌متر) تا رسیدن امداد ادامه دهید."
             ),
-            warningNote = "در فرد هوشیار یا دارای تنفس طبیعی ماساژ قلبی انجام ندهید.",
-            sourceNote = "اصول عمومی احیای پایه جمعیت هلال احمر",
-            relatedCrisis = CrisisType.FLOOD
+            warningNote = "در فرد هوشیار یا دارای تنفس طبیعی هرگز ماساژ قلبی انجام ندهید و حتماً برای تسلط عملی در دوره‌های حضوری شرکت کنید.",
+            sourceNote = "راهنمای احیای پایه عمومی جمعیت هلال احمر و اصول AHA برای عموم",
+            lastReviewedDate = "بازبینی علمی: آذر ۱۴۰۵",
+            relatedCrisis = CrisisType.FLOOD,
+            relatedQuizTopicId = "quiz_cpr"
         ),
         TrainingLesson(
             id = "first_aid_burns",
-            title = "اقدامات صحیح در سوختگی‌های سطحی و متوسط",
+            mediaId = "vid_first_aid_burns",
+            title = "۳. اقدامات صحیح در سوختگی",
             category = "کمک‌های اولیه",
             durationMinutes = 3,
-            summary = "کارهایی که باید بلافاصله انجام دهید و باورهای غلطی که نباید اجرا شوند.",
+            summary = "خنک‌سازی ایمن محل سوختگی و پرهیز از باورهای نادرست خانگی.",
             steps = listOf(
-                "منبع حرارت را دور کرده و محل سوختگی را ۱۰ تا ۲۰ دقیقه زیر آب خنک (نه یخ) بگیرید.",
-                "پیش از تورم، انگشتر، ساعت و لباس غیرچسبیده را به آرامی جدا کنید.",
-                "روی سوختگی را با پوشش تمیز و غیرپرزدار به صورت آزاد بپوشانید.",
-                "در سوختگی‌های وسیع، عمقی یا صورت/دست‌ها فوراً به اورژانس مراجعه کنید."
+                "منبع حرارت را دور کرده و محل سوختگی را ۱۰ تا ۲۰ دقیقه زیر آب خنک جاری (نه یخ) قرار دهید.",
+                "پیش از ایجاد تورم، ساعت، انگشتر و لباس غیرچسبیده به زخم را به آرامی جدا کنید.",
+                "روی سوختگی را با پانسمان استریل یا پوشش تمیز غیرپرزدار به‌صورت آزاد بپوشانید.",
+                "در سوختگی‌های وسیع، عمقی، الکتریکی یا ناحیه صورت و دست‌ها فوراً با ۱۱۵ تماس بگیرید."
             ),
-            warningNote = "هرگز از خمیردندان، یخ، کره یا روغن روی محل سوختگی استفاده نکنید و تاول‌ها را نترکانید.",
-            sourceNote = "راهنمای عمومی مراقبت‌های اولیه اورژانس",
-            relatedCrisis = CrisisType.FIRE
+            warningNote = "هرگز خمیردندان، یخ، کره، روغن یا پودر روی سوختگی نگذارید و تاول‌ها را نترکانید.",
+            sourceNote = "دستورالعمل عمومی مراقبت‌های اولیه اورژانس و هلال احمر",
+            lastReviewedDate = "بازبینی علمی: آذر ۱۴۰۵",
+            relatedCrisis = CrisisType.FIRE,
+            relatedQuizTopicId = "quiz_burns"
         ),
         TrainingLesson(
             id = "first_aid_fracture",
-            title = "بی‌حرکت‌سازی شکستگی و مراقبت از آسیب ستون فقرات",
+            mediaId = "vid_first_aid_fracture",
+            title = "۴. شکستگی و آتل‌بندی ایمن",
+            category = "کمک‌های اولیه",
+            durationMinutes = 5,
+            summary = "اصول بی‌حرکت‌سازی عضو آسیب‌دیده و حفاظت از آسیب‌های احتمالی ستون فقرات.",
+            steps = listOf(
+                "مصدوم مشکوک به آسیب گردن یا کمر را جابه‌جا نکنید مگر در خطر فوری مثل حریق یا ریزش آوار.",
+                "عضو مشکوک به شکستگی را در همان وضعیت قرارگیری با آتل نرم یا تخته و باند ثابت کنید.",
+                "طول آتل باید مفصل بالا و پایین محل شکستگی را بپوشاند بدون اینکه به جریان خون فشار بیاورد.",
+                "انتهای انگشتان عضو بسته‌شده را از نظر رنگ، گرما و حس لمس بررسی کنید."
+            ),
+            warningNote = "هرگز تلاش نکنید استخوان جابه‌جاشده یا بیرون‌زده را جا بیندازید.",
+            sourceNote = "آموزش عمومی امداد و نجات جمعیت هلال احمر",
+            lastReviewedDate = "بازبینی علمی: آذر ۱۴۰۵",
+            relatedCrisis = CrisisType.URBAN_INCIDENT,
+            relatedQuizTopicId = "quiz_fracture"
+        ),
+        TrainingLesson(
+            id = "first_aid_choking",
+            mediaId = "vid_first_aid_choking",
+            title = "۵. برخورد با خفگی (انسداد راه هوایی)",
             category = "کمک‌های اولیه",
             durationMinutes = 4,
-            summary = "نحوه صحیح حفاظت از عضو آسیب‌دیده در حوادث زلزله و تصادفات.",
+            summary = "تشخیص انسداد کامل راه هوایی و اجرای ایمن ضربه بین کتف‌ها و مانور فشار شکمی.",
             steps = listOf(
-                "از جابه‌جا کردن مصدوم مشکوک به آسیب گردن یا کمر جز در خطر فوری (آتش/آوار) خودداری کنید.",
-                "عضو مشکوک به شکستگی را در همان وضعیت که هست با آتل نرم یا تخته و باند ببندید.",
-                "آتل باید مفصل بالا و پایین محل شکستگی را دربرگیرد بدون آنکه جریان خون را قطع کند.",
-                "انگشتان عضو آتل‌بندی‌شده را از نظر رنگ‌پریدگی یا بی‌حسی کنترل کنید."
+                "اگر فرد قادر به سرفه قوی و صحبت است، او را به ادامه سرفه تشویق کنید و به پشتش ضربه نزنید.",
+                "اگر نمی‌تواند نفس بکشد، سرفه کند یا حرف بزند (علامت دست روی گلو)، فوراً کمک بخواهید.",
+                "در بزرگسال هوشیار: ۵ ضربه محکم با پاشنه دست بین دو کتف وارد کنید (بدن کمی به جلو خم شود).",
+                "در صورت باز نشدن راه هوایی، تا ۵ فشار شکمی (مانور هایملیخ) بالای ناف و رو به داخل و بالا انجام دهید."
             ),
-            warningNote = "هرگز سعی نکنید استخوان جابه‌جاشده یا بیرون‌زده را جا بیندازید.",
-            sourceNote = "آموزش عمومی امداد و نجات",
-            relatedCrisis = CrisisType.URBAN_INCIDENT
+            warningNote = "برای نوزادان زیر یک سال از فشار شکمی استفاده نکنید؛ روش ویژه نوزاد تنها با آموزش تخصصی و نظارت انجام شود.",
+            sourceNote = "دستورالعمل امداد پایه انسداد راه هوایی (هلال احمر / IFRC)",
+            lastReviewedDate = "بازبینی علمی: آذر ۱۴۰۵",
+            relatedCrisis = CrisisType.AIR_POLLUTION,
+            relatedQuizTopicId = "quiz_choking"
         ),
         TrainingLesson(
-            id = "first_aid_poisoning",
-            title = "برخورد با خفگی و مسمومیت گازی (مونوکسید کربن)",
-            category = "ایمنی و امداد",
+            id = "first_aid_co_poisoning",
+            mediaId = "vid_first_aid_co_poisoning",
+            title = "۶. مسمومیت با مونوکسید کربن (CO)",
+            category = "کمک‌های اولیه",
             durationMinutes = 4,
-            summary = "شناسایی علائم مسمومیت خاموش با مونوکسید کربن و خروج ایمن.",
+            summary = "شناخت نشانه‌های قاتل خاموش، خروج فوری به هوای آزاد و پیشگیری در فصل سرد.",
             steps = listOf(
-                "در مسمومیت گازی بلافاصله در و پنجره‌ها را باز کرده و فرد را به هوای آزاد منتقل کنید.",
-                "با ۱۱۵ تماس بگیرید و از روشن‌کردن وسایل برقی در صورت احتمال نشت گاز شهری خودداری کنید.",
-                "در خفگی با جسم خارجی در بزرگسال هوشیار، از ضربه بین دو کتف و مانور هایملیخ استفاده کنید."
+                "نشانه‌های هشدار شامل سردرد، سرگیجه، تهوع، ضعف و خواب‌آلودگی ناگهانی چند نفر در یک فضاست.",
+                "بلافاصله درها و پنجره‌ها را باز کرده و همه افراد را به هوای آزاد منتقل کنید.",
+                "وسیله گرمایشی مشکوک را خاموش کنید و در صورت احتمال نشت گاز شهری از زدن کلید برق خودداری کنید.",
+                "فوراً با ۱۱۵ تماس بگیرید؛ حتی پس از بهبود ظاهری، بررسی پزشکی و اکسیژن‌درمانی ضروری است."
             ),
-            warningNote = "علائم اولیه مسمومیت مونوکسید شامل سردرد، سرگیجه و تهوع است؛ سریع محیط را ترک کنید.",
-            sourceNote = "دستورالعمل عمومی ایمنی زمستانی و اورژانس",
-            relatedCrisis = CrisisType.SNOW_BLIZZARD
+            warningNote = "مونوکسید کربن بی‌رنگ و بی‌بوست؛ بوی گاز شهری نشانه گاز متان/مرکاپتان است و نبود بو به معنای نبود CO نیست.",
+            sourceNote = "بخشنامه ایمنی زمستانی اورژانس کشور و علوم پایه تنفسی",
+            lastReviewedDate = "بازبینی علمی: آذر ۱۴۰۵",
+            relatedCrisis = CrisisType.SNOW_BLIZZARD,
+            relatedQuizTopicId = "quiz_co_poisoning"
         ),
         TrainingLesson(
-            id = "crisis_safety_principles",
-            title = "اصول مدیریت استرس و تصمیم‌گیری در ۷۲ ساعت اول بحران",
-            category = "آمادگی بحران",
+            id = "crisis_stress_management",
+            mediaId = "vid_crisis_stress",
+            title = "۷. مدیریت استرس و تصمیم‌گیری در بحران",
+            category = "آمادگی روانی و بحران",
             durationMinutes = 5,
-            summary = "چگونه در زمان قطع برق و اینترنت، اطلاعات درست را حفظ کنیم و آرام بمانیم.",
+            summary = "تکنیک‌های آرام‌سازی فوری در ۷۲ ساعت اول و تصمیم‌گیری منطقی برای خود و خانواده.",
             steps = listOf(
-                "سه نفس عمیق بکشید و قبل از هر اقدام شتاب‌زده، خطرات فوری اطراف (آتش، برق، گاز) را بررسی کنید.",
-                "به جای تماس‌های صوتی مکرر، از پیامک متنی کوتاه استفاده کنید چون در ترافیک شبکه شانس ارسال بیشتری دارد.",
-                "از اطلاعات تأییدنشده شبکه‌های اجتماعی دوری کنید و رادیو یا پیام‌های رسمی را ملاک قرار دهید.",
-                "موجودی آب و باتری تلفن همراه را سهمیه‌بندی کنید."
+                "پیش از هر اقدام شتاب‌زده، ۱۰ ثانیه توقف کنید و ۳ نفس عمیق شکمی (۴ ثانیه دم، ۴ ثانیه بازدم آرام) بکشید.",
+                "اولویت‌ها را به ترتیب چک کنید: ۱. ایمنی فوری (آتش، آوار، گاز، برق)، ۲. بررسی سلامت اعضا، ۳. خروج ایمن.",
+                "در زمان شلوغی شبکه، به جای تماس طولانی از پیامک کوتاه استفاده کنید.",
+                "با لحن آرام و جملات کوتاه به کودکان و سالمندان احساس امنیت و جهت بدهید."
             ),
-            warningNote = "حفظ آرامش شما به کودکان و سالمندان خانواده کمک می‌کند تصمیم‌های ایمن‌تری بگیرند.",
-            sourceNote = "اصول تاب‌آوری شهری و مدیریت بحران خانواده",
-            relatedCrisis = CrisisType.POWER_OUTAGE
+            warningNote = "تصمیم‌گیری عجولانه ناشی از ترس (مانند دویدن در راه‌پله هنگام زلزله) اصلی‌ترین عامل آسیب در حوادث است.",
+            sourceNote = "اصول حمایت روانی اولیه (PFA) و تاب‌آوری در بحران",
+            lastReviewedDate = "بازبینی علمی: آذر ۱۴۰۵",
+            relatedCrisis = CrisisType.POWER_OUTAGE,
+            relatedQuizTopicId = "quiz_stress"
         )
     )
 
+    // Transparently declared offline media inventory: no fake URLs!
+    fun defaultOfflineMedia(): List<OfflineMediaEntity> = trainingLessons.map { lesson ->
+        OfflineMediaEntity(
+            mediaId = lesson.mediaId,
+            category = MediaCategory.FIRST_AID,
+            title = "ویدئوی آموزشی: ${lesson.title}",
+            description = lesson.summary,
+            sourceAttribution = "${lesson.sourceNote} • ${lesson.lastReviewedDate}",
+            streamUrl = null, // No unverified fake URL; ready for verified CMS/CDN or local MP4 import
+            localFilePath = null,
+            status = MediaDownloadStatus.NOT_LINKED,
+            durationLabel = "${lesson.durationMinutes} دقیقه"
+        )
+    }
+
     val quizTopics: List<QuizTopic> = listOf(
-        QuizTopic("quiz_earthquake", "آزمون آمادگی زلزله", "سنجش واکنش صحیح هنگام لرزش و پس‌لرزه", CrisisType.EARTHQUAKE),
-        QuizTopic("quiz_first_aid", "آزمون کمک‌های اولیه", "سنجش دانش کنترل خونریزی، سوختگی و مسمومیت", CrisisType.FIRE),
-        QuizTopic("quiz_flood_urban", "آزمون سیل و حوادث شهری", "تصمیم‌گیری ایمن در آب‌گرفتگی و نشت گاز", CrisisType.FLOOD)
+        QuizTopic("quiz_bleeding", "آزمون کنترل خونریزی", "مهارت پانسمان و فشار مستقیم", CrisisType.EARTHQUAKE),
+        QuizTopic("quiz_cpr", "آزمون احیای قلبی-ریوی", "تشخیص توقف تنفس و ماساژ قلبی", CrisisType.FLOOD),
+        QuizTopic("quiz_burns", "آزمون مراقبت سوختگی", "اقدامات فوری و باورهای نادرست", CrisisType.FIRE),
+        QuizTopic("quiz_fracture", "آزمون شکستگی و آتل‌بندی", "بی‌حرکت‌سازی و حفاظت ستون فقرات", CrisisType.URBAN_INCIDENT),
+        QuizTopic("quiz_choking", "آزمون رفع خفگی", "تشخیص انسداد و اقدام صحیح", CrisisType.AIR_POLLUTION),
+        QuizTopic("quiz_co_poisoning", "آزمون مسمومیت مونوکسید کربن", "علائم و خروج ایمن", CrisisType.SNOW_BLIZZARD),
+        QuizTopic("quiz_stress", "آزمون تصمیم‌گیری در بحران", "آرامش، ارتباط و اولویت‌بندی", CrisisType.POWER_OUTAGE),
+        QuizTopic("quiz_earthquake", "آزمون جامع زلزله", "واکنش ایمن پیش، حین و پس از لرزه", CrisisType.EARTHQUAKE)
     )
 
     val quizQuestions: List<QuizQuestion> = listOf(
         QuizQuestion(
-            id = "q_eq_1",
-            topicId = "quiz_earthquake",
-            question = "هنگام وقوع زلزله در طبقه سوم ساختمان، بهترین و ایمن‌ترین واکنش فوری چیست؟",
+            id = "q_bl_1", topicId = "quiz_bleeding",
+            question = "اگر گاز استریل روی زخم دچار خونریزی کاملاً خیس شد، چه اقدامی صحیح است؟",
             options = listOf(
-                "دویدن سریع به سمت راه‌پله و خروج",
-                "پناه‌گیری زیر میز محکم یا کنار دیوار داخلی و پوشاندن سر و گردن",
-                "استفاده از آسانسور برای رسیدن سریع به همکف",
-                "ایستادن جلوی پنجره برای بررسی وضعیت خیابان"
+                "گاز اول را بردارید و گاز خشک بگذارید",
+                "گاز اول را برندارید و لایه تمیز جدیدی روی آن بگذارید و فشار دهید",
+                "زخم را با آب گرم بشویید",
+                "بلافاصله پودر قهوه روی زخم بریزید"
             ),
             correctIndex = 1,
-            explanation = "بیشترین آسیب‌ها هنگام دویدن به سمت پله‌ها و سقوط اشیا رخ می‌دهد؛ پناه‌گیری فوری تا پایان لرزش ایمن‌ترین کار است."
+            explanation = "برداشتن لایه اول باعث کنده شدن لخته‌های اولیه و بازگشت خونریزی شدید می‌شود."
         ),
         QuizQuestion(
-            id = "q_eq_2",
-            topicId = "quiz_earthquake",
-            question = "پس از توقف لرزش زلزله، برای اطلاع‌رسانی به اعضای خانواده چه روشی مناسب‌تر است؟",
-            options = listOf(
-                "ارسال پیامک کوتاه یا پیام متنی در شبکه‌های کم‌مصرف",
-                "تماس صوتی طولانی با همه بستگان",
-                "بازگشت فوری به ساختمان ترک‌خورده برای برداشتن وسایل",
-                "استفاده از فندک در راه‌پله تاریک"
-            ),
-            correctIndex = 0,
-            explanation = "پیامک پهنای باند بسیار کمتری نیاز دارد و در زمان شلوغی شبکه شانس ارسال بالاتری دارد."
+            id = "q_cpr_1", topicId = "quiz_cpr",
+            question = "آهنگ استاندارد فشار قفسه سینه در احیای قلبی-ریوی پایه بزرگسالان چند بار در دقیقه است؟",
+            options = listOf("۳۰ تا ۴۰ بار", "۶۰ بار", "۱۰۰ تا ۱۲۰ بار", "۲۰۰ بار"),
+            correctIndex = 2,
+            explanation = "سرعت مناسب ماساژ قلبی حدود ۱۰۰ تا ۱۲۰ فشار در دقیقه با بازگشت کامل قفسه سینه است."
         ),
         QuizQuestion(
-            id = "q_eq_3",
-            topicId = "quiz_earthquake",
-            question = "چه زمانی باید شیر اصلی گاز را پس از زلزله قطع کرد؟",
+            id = "q_bu_1", topicId = "quiz_burns",
+            question = "بهترین اقدام در دقایق اولیه سوختگی حرارتی سطحی چیست؟",
             options = listOf(
-                "فقط اگر بوی گاز یا صدای نشت یا آسیب مشکوک به لوله‌ها وجود دارد",
-                "باید هر روز بدون دلیل قطع شود",
-                "هنگام لرزش شدید قبل از پناه‌گیری",
-                "فقط با روشن کردن کبریت و تست شعله"
-            ),
-            correctIndex = 0,
-            explanation = "اگر بوی گاز حس کردید یا صدای نشت شنیدید، شیر اصلی را ببندید؛ وصل مجدد گاز باید با بررسی ایمنی انجام شود."
-        ),
-        QuizQuestion(
-            id = "q_fa_1",
-            topicId = "quiz_first_aid",
-            question = "اولین اقدام صحیح برای سوختگی سطحی با آب داغ روی دست چیست؟",
-            options = listOf(
-                "مالیدن خمیردندان یا کره روی پوست",
-                "گذاشتن مستقیم تکه‌های یخ روی محل سوختگی",
-                "گرفتن محل سوختگی زیر آب خنک جاری به مدت ۱۰ تا ۲۰ دقیقه",
-                "ترکاندن تاول‌ها با سوزن"
+                "مالیدن خمیردندان یا کره",
+                "قرار دادن یخ مستقیم روی پوست",
+                "گرفتن محل زیر آب خنک جاری برای ۱۰ تا ۲۰ دقیقه",
+                "ترکاندن تاول‌ها"
             ),
             correctIndex = 2,
-            explanation = "آب خنک جاری حرارت را از بافت می‌گیرد و آسیب را کاهش می‌دهد؛ یخ و خمیردندان آسیب را بیشتر می‌کنند."
+            explanation = "آب خنک جاری حرارت باقی‌مانده در بافت را کاهش می‌دهد؛ یخ و خمیردندان به بافت آسیب می‌زنند."
         ),
         QuizQuestion(
-            id = "q_fa_2",
-            topicId = "quiz_first_aid",
-            question = "اگر در حال کنترل خونریزی شدید با گاز استریل بودید و گاز آغشته به خون شد، چه کار باید کرد؟",
+            id = "q_fr_1", topicId = "quiz_fracture",
+            question = "طول آتل مناسب برای بی‌حرکت‌سازی یک استخوان شکسته باید چگونه باشد؟",
             options = listOf(
-                "گاز اول را بردارید و زخم را با آب بشویید",
-                "گاز اول را سر جای خود بگذارید و لایه جدیدی روی آن اضافه کرده و فشار دهید",
-                "زخم را باز بگذارید تا خشک شود",
-                "پودر قهوه روی زخم بریزید"
+                "فقط روی محل شکستگی قرار بگیرد",
+                "مفصل بالا و پایین استخوان آسیب‌دیده را دربرگیرد",
+                "به حدی سفت بسته شود که نبض قطع شود",
+                "ابتدا استخوان را جا بیندازیم و بعد ببندیم"
             ),
             correctIndex = 1,
-            explanation = "برداشتن لایه اول باعث کنده شدن لخته‌های تشکیل‌شده و تشدید خونریزی می‌شود."
+            explanation = "آتل باید مفاصل دو طرف شکستگی را بی‌حرکت کند بدون آنکه جریان خون را مسدود نماید."
         ),
         QuizQuestion(
-            id = "q_fa_3",
-            topicId = "quiz_first_aid",
-            question = "کدام مورد نشانه خطرناک مسمومیت با گاز مونوکسید کربن در فضای بسته است؟",
+            id = "q_ch_1", topicId = "quiz_choking",
+            question = "اگر فردی هنگام غذا خوردن سرفه‌های قوی و صدادار می‌کند، صحیح‌ترین کار چیست؟",
             options = listOf(
-                "سردرد ناگهانی، سرگیجه، تهوع و خواب‌آلودگی هم‌زمان چند نفر",
-                "احساس تشنگی پس از پیاده‌روی",
-                "بوی تند و تیز سرکه در آشپزخانه",
-                "خنک شدن هوای اتاق"
-            ),
-            correctIndex = 0,
-            explanation = "مونوکسید کربن بی‌رنگ و بی‌بوست و معمولاً با علائم شبیه آنفولانزا یا سردرد و خواب‌آلودگی جمعی بروز می‌کند."
-        ),
-        QuizQuestion(
-            id = "q_fl_1",
-            topicId = "quiz_flood_urban",
-            question = "هنگام مواجهه با خیابان آب‌گرفته هنگام رانندگی، صحیح‌ترین تصمیم چیست؟",
-            options = listOf(
-                "افزایش سرعت برای عبور سریع از میان آب",
-                "توقف، دور زدن و انتخاب مسیر جایگزین یا انتقال به نقطه مرتفع",
-                "ماندن در زیرگذر تا کاهش آب",
-                "خاموش کردن چراغ‌های خودرو و ادامه مسیر"
+                "فوراً ضربه محکم به کمرش بزنیم",
+                "او را به ادامه سرفه تشویق کنیم و آرام بمانیم",
+                "به او آب فراوان بدهیم",
+                "انگشت را داخل گلویش ببریم"
             ),
             correctIndex = 1,
-            explanation = "آب جاری می‌تواند خودرو را جابه‌جا کند یا حفره‌های خطرناک خیابان را پنهان سازد."
+            explanation = "سرفه قوی نشانه انسداد ناقص است و مؤثرترین راه خروج جسم خارجی همان سرفه طبیعی است."
         ),
         QuizQuestion(
-            id = "q_fl_2",
-            topicId = "quiz_flood_urban",
-            question = "در صورت ورود به خانه و استشمام بوی شدید گاز شهری، کدام کار ممنوع است؟",
+            id = "q_co_1", topicId = "quiz_co_poisoning",
+            question = "کدام علامت زنگ خطر مسمومیت هم‌زمان با مونوکسید کربن در خانه است؟",
             options = listOf(
-                "باز کردن در و پنجره‌ها",
-                "بستن شیر اصلی گاز",
-                "زدن کلید چراغ یا استفاده از آسانسور",
-                "خروج از ساختمان و تماس با ۱۹۴ از فضای باز"
-            ),
-            correctIndex = 2,
-            explanation = "هر کلید برقی یا زنگ می‌تواند جرقه‌ای ایجاد کند که در حضور گاز متراکم خطر انفجار دارد."
-        ),
-        QuizQuestion(
-            id = "q_fl_3",
-            topicId = "quiz_flood_urban",
-            question = "شماره تماس مستقیم سازمان آتش‌نشانی و خدمات ایمنی در ایران کدام است؟",
-            options = listOf(
-                "۱۲۵",
-                "۱۱۸",
-                "۱۳۳",
-                "۱۴۱"
+                "سردرد، سرگیجه، تهوع و خواب‌آلودگی هم‌زمان چند عضو خانواده",
+                "بوی تند و تیز گاز آشپزخانه",
+                "سرد شدن بیش از حد اتاق",
+                "احساس گرسنگی ناگهانی"
             ),
             correctIndex = 0,
-            explanation = "شماره ۱۲۵ برای آتش‌نشانی، ۱۱۲ برای هلال احمر، ۱۱۵ برای اورژانس و ۱۱۰ برای پلیس است."
+            explanation = "مونوکسید کربن بی‌بو و بی‌رنگ است و با کاهش اکسیژن‌رسانی به مغز باعث سردرد و خواب‌آلودگی جمعی می‌شود."
+        ),
+        QuizQuestion(
+            id = "q_st_1", topicId = "quiz_stress",
+            question = "در ترافیک شدید مخابراتی پس از بحران، کدام روش ارتباطی شانس موفقیت بالاتری دارد؟",
+            options = listOf(
+                "تماس صوتی مکرر و طولانی",
+                "ارسال پیامک کوتاه متنی",
+                "تماس تصویری",
+                "انتشار شایعات برای اطلاع‌رسانی"
+            ),
+            correctIndex = 1,
+            explanation = "پیامک متنی پهنای باند بسیار کمی مصرف می‌کند و در شبکه‌های شلوغ بهتر ارسال می‌شود."
+        ),
+        QuizQuestion(
+            id = "q_eq_1", topicId = "quiz_earthquake",
+            question = "هنگام وقوع زلزله در طبقه سوم ساختمان، بهترین واکنش فوری چیست؟",
+            options = listOf(
+                "دویدن به سمت راه‌پله",
+                "پناه‌گیری زیر میز محکم یا کنار ستون داخلی و پوشاندن سر و گردن",
+                "استفاده از آسانسور",
+                "ایستادن کنار پنجره شیشه‌ای"
+            ),
+            correctIndex = 1,
+            explanation = "پناه‌گیری در جای امن تا توقف لرزش از آسیب ناشی از سقوط اشیا و سقوط در پله‌ها جلوگیری می‌کند."
         )
     )
 }

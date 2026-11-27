@@ -20,20 +20,18 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CloudOff
-import androidx.compose.material.icons.filled.LocationOn
+import androidx.compose.material.icons.filled.Science
 import androidx.compose.material.icons.filled.Shield
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.Checkbox
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.minimumInteractiveComponentSize
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -51,11 +49,10 @@ import com.example.R
 
 @Composable
 fun OnboardingScreen(
-    onCompleteOnboarding: (name: String, city: String, locationConsent: Boolean) -> Unit
+    onCompleteOnboarding: (name: String, city: String) -> Unit
 ) {
     var name by rememberSaveable { mutableStateOf("") }
     var city by rememberSaveable { mutableStateOf("تهران") }
-    var locationConsent by rememberSaveable { mutableStateOf(true) }
 
     Scaffold(
         containerColor = MaterialTheme.colorScheme.background
@@ -91,7 +88,7 @@ fun OnboardingScreen(
                         color = MaterialTheme.colorScheme.onBackground
                     )
                     Text(
-                        text = "دستیار آرام، سریع و قابل اعتماد برای آمادگی پیش از بحران، اقدام ایمن در شرایط اضطراری و دسترسی آفلاین به اطلاعات حیاتی.",
+                        text = "همراه مطمئن شما برای آمادگی در بحران، یادگیری کمک‌های اولیه، درک علمی حوادث با آزمایشگاه تعاملی و دنیای آرام مأوا برای خردسالان.",
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -103,14 +100,14 @@ fun OnboardingScreen(
                 ) {
                     FeatureHighlightChip(
                         icon = Icons.Filled.CloudOff,
-                        title = "۱۰۰٪ آفلاین",
-                        subtitle = "ذخیره راهنما و خانواده",
+                        title = "آفلاین و سریع",
+                        subtitle = "دسترسی بدون اینترنت",
                         modifier = Modifier.weight(1f)
                     )
                     FeatureHighlightChip(
-                        icon = Icons.Filled.Shield,
-                        title = "حریم خصوصی",
-                        subtitle = "اطلاعات در دستگاه شما",
+                        icon = Icons.Filled.Science,
+                        title = "دانشنامه و آزمایشگاه",
+                        subtitle = "علوم متوسطه اول",
                         modifier = Modifier.weight(1f)
                     )
                 }
@@ -152,30 +149,23 @@ fun OnboardingScreen(
 
                         Surface(
                             color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.45f),
-                            shape = RoundedCornerShape(14.dp),
-                            onClick = { locationConsent = !locationConsent },
-                            modifier = Modifier.minimumInteractiveComponentSize()
+                            shape = RoundedCornerShape(14.dp)
                         ) {
                             Row(
                                 modifier = Modifier
                                     .fillMaxWidth()
-                                    .padding(horizontal = 10.dp, vertical = 8.dp),
+                                    .padding(12.dp),
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
-                                Checkbox(
-                                    checked = locationConsent,
-                                    onCheckedChange = { locationConsent = it },
-                                    modifier = Modifier.testTag("onboarding_location_consent_checkbox")
-                                )
                                 Icon(
-                                    imageVector = Icons.Filled.LocationOn,
-                                    contentDescription = "دسترسی موقعیت",
+                                    imageVector = Icons.Filled.Shield,
+                                    contentDescription = "حریم خصوصی",
                                     tint = MaterialTheme.colorScheme.primary,
                                     modifier = Modifier.size(20.dp)
                                 )
                                 Spacer(modifier = Modifier.width(8.dp))
                                 Text(
-                                    text = "موقعیت مکانی تنها هنگام درخواست کمک، نقشه یا ثبت گزارش و با اجازه شما استفاده شود.",
+                                    text = "تمامی اطلاعات خانواده و پیشرفت‌های آموزشی شما تنها روی حافظه داخلی دستگاه ذخیره می‌شوند.",
                                     style = MaterialTheme.typography.bodySmall,
                                     color = MaterialTheme.colorScheme.onSurface
                                 )
@@ -185,7 +175,7 @@ fun OnboardingScreen(
                 }
 
                 Button(
-                    onClick = { onCompleteOnboarding(name, city, locationConsent) },
+                    onClick = { onCompleteOnboarding(name, city) },
                     modifier = Modifier
                         .fillMaxWidth()
                         .height(54.dp)
@@ -197,7 +187,7 @@ fun OnboardingScreen(
                     )
                 ) {
                     Text(
-                        text = "شروع و ورود به داشبورد",
+                        text = "شروع و ورود به صفحه اصلی",
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.Bold
                     )

@@ -1,9 +1,7 @@
 package com.example.ui.screens
 
-import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -19,15 +17,13 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CheckCircle
-import androidx.compose.material.icons.filled.ExpandLess
-import androidx.compose.material.icons.filled.ExpandMore
+import androidx.compose.material.icons.filled.OndemandVideo
+import androidx.compose.material.icons.filled.PlayCircle
 import androidx.compose.material.icons.filled.Quiz
 import androidx.compose.material.icons.filled.School
-import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -44,7 +40,6 @@ import androidx.compose.material3.minimumInteractiveComponentSize
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -56,7 +51,8 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.example.R
-import com.example.data.model.CrisisType
+import com.example.data.local.entity.MediaDownloadStatus
+import com.example.data.local.entity.OfflineMediaEntity
 import com.example.data.model.QuizTopic
 import com.example.data.model.TrainingLesson
 import com.example.ui.components.HamyarTopBar
@@ -73,24 +69,25 @@ import com.example.ui.viewmodel.TrainingUiState
 fun TrainingScreen(
     uiState: TrainingUiState,
     isOnline: Boolean,
+    onOpenLessonDetail: (String) -> Unit,
     onStartQuiz: (QuizTopic) -> Unit,
     onSelectAnswer: (Int) -> Unit,
     onNextQuestion: () -> Unit,
     onCloseQuiz: () -> Unit,
-    onOpenCrisisGuide: (CrisisType) -> Unit,
     onBack: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     var activeTab by rememberSaveable { mutableIntStateOf(0) }
-    var expandedLessonId by rememberSaveable { mutableStateOf<String?>(null) }
 
     Scaffold(
         modifier = modifier,
         containerColor = MaterialTheme.colorScheme.background,
         topBar = {
             HamyarTopBar(
-                title = "آموزش و سنجش آمادگی",
-                onBackClick = onBack,
+                title = "آموزش کمک‌های اولیه و آزمون",
+                onBackClick = {
+                    if (uiState.activeQuizTopic != null) onCloseQuiz() else onBack()
+                },
                 isOnline = isOnline
             )
         }
@@ -136,8 +133,10 @@ fun TrainingScreen(
                             FilterChip(
                                 selected = activeTab == 0,
                                 onClick = { activeTab = 0 },
-                                leadingIcon = { Icon(Icons.Filled.School, contentDescription = null, modifier = Modifier.size(16.dp)) },
-                                label = { Text("درس‌های کمک‌های اولیه") },
+                                leadingIcon = {
+                                    Icon(Icons.Filled.School, contentDescription = null, modifier = Modifier.size(16.dp))
+                                },
+                                label = { Text("۷ درس ویدئویی و متنی") },
                                 colors = FilterChipDefaults.filterChipColors(
                                     selectedContainerColor = MaterialTheme.colorScheme.primary,
                                     selectedLabelColor = MaterialTheme.colorScheme.onPrimary
@@ -150,8 +149,10 @@ fun TrainingScreen(
                             FilterChip(
                                 selected = activeTab == 1,
                                 onClick = { activeTab = 1 },
-                                leadingIcon = { Icon(Icons.Filled.Quiz, contentDescription = null, modifier = Modifier.size(16.dp)) },
-                                label = { Text("آزمون‌های کوتاه") },
+                                leadingIcon = {
+                                    Icon(Icons.Filled.Quiz, contentDescription = null, modifier = Modifier.size(16.dp))
+                                },
+                                label = { Text("آزمون‌های سنجش") },
                                 colors = FilterChipDefaults.filterChipColors(
                                     selectedContainerColor = MaterialTheme.colorScheme.primary,
                                     selectedLabelColor = MaterialTheme.colorScheme.onPrimary
@@ -166,13 +167,13 @@ fun TrainingScreen(
 
                     if (activeTab == 0) {
                         items(uiState.lessons, key = { it.id }) { lesson ->
-                            LessonCard(
+                            val mediaAsset = uiState.mediaMap[lesson.mediaId]
+                            val quizDone = uiState.progressMap[lesson.relatedQuizTopicId] != null
+                            LessonSummaryCard(
                                 lesson = lesson,
-                                isExpanded = expandedLessonId == lesson.id,
-                                onToggleExpand = {
-                                    expandedLessonId = if (expandedLessonId == lesson.id) null else lesson.id
-                                },
-                                onOpenCrisisGuide = onOpenCrisisGuide
+                                mediaAsset = mediaAsset,
+                                quizCompleted = quizDone,
+                                onOpenDetail = { onOpenLessonDetail(lesson.id) }
                             )
                         }
                     } else {
@@ -236,17 +237,22 @@ fun TrainingScreen(
 }
 
 @Composable
-private fun LessonCard(
+private fun LessonSummaryCard(
     lesson: TrainingLesson,
-    isExpanded: Boolean,
-    onToggleExpand: () -> Unit,
-    onOpenCrisisGuide: (CrisisType) -> Unit
+    mediaAsset: OfflineMediaEntity?,
+    quizCompleted: Boolean,
+    onOpenDetail: () -> Unit
 ) {
+    val isOfflineReady = mediaAsset?.status == MediaDownloadStatus.DOWNLOADED
+
     Card(
-        onClick = onToggleExpand,
+        onClick = onOpenDetail,
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
         shape = RoundedCornerShape(18.dp),
-        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.45f))
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.45f)),
+        modifier = Modifier
+            .fillMaxWidth()
+            .testTag("lesson_card_${lesson.id}")
     ) {
         Column(
             modifier = Modifier.padding(16.dp),
@@ -254,103 +260,67 @@ private fun LessonCard(
         ) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.SpaceBetween
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
             ) {
-                Column(modifier = Modifier.weight(1f)) {
-                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        StatusBadge(
-                            text = lesson.category,
-                            containerColor = MaterialTheme.colorScheme.primaryContainer,
-                            contentColor = MaterialTheme.colorScheme.onPrimaryContainer
-                        )
-                        Text(
-                            text = "${lesson.durationMinutes} دقیقه مطالعه",
-                            style = MaterialTheme.typography.labelSmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
-                    Spacer(modifier = Modifier.height(6.dp))
-                    Text(
-                        text = lesson.title,
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Bold
+                Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                    StatusBadge(
+                        text = lesson.category,
+                        containerColor = MaterialTheme.colorScheme.primaryContainer,
+                        contentColor = MaterialTheme.colorScheme.onPrimaryContainer
                     )
-                    Text(
-                        text = lesson.summary,
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    StatusBadge(
+                        text = if (isOfflineReady) "ویدئو آماده آفلاین" else "ساختار ویدئو + متن",
+                        containerColor = if (isOfflineReady) SafeGreenSoft else WarningAmberSoft,
+                        contentColor = if (isOfflineReady) SafeGreen else WarningAmber,
+                        icon = Icons.Filled.OndemandVideo
                     )
                 }
-                Icon(
-                    imageVector = if (isExpanded) Icons.Filled.ExpandLess else Icons.Filled.ExpandMore,
-                    contentDescription = if (isExpanded) "بستن درس" else "باز کردن درس"
-                )
+                if (quizCompleted) {
+                    Icon(
+                        imageVector = Icons.Filled.CheckCircle,
+                        contentDescription = "آزمون انجام شده",
+                        tint = SafeGreen,
+                        modifier = Modifier.size(20.dp)
+                    )
+                }
             }
 
-            AnimatedVisibility(visible = isExpanded) {
-                Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                    lesson.steps.forEachIndexed { idx, step ->
-                        Row(verticalAlignment = Alignment.Top) {
-                            Box(
-                                modifier = Modifier
-                                    .size(24.dp)
-                                    .clip(CircleShape)
-                                    .background(MaterialTheme.colorScheme.primaryContainer),
-                                contentAlignment = Alignment.Center
-                            ) {
-                                Text(
-                                    text = "${idx + 1}",
-                                    style = MaterialTheme.typography.labelSmall,
-                                    fontWeight = FontWeight.Bold
-                                )
-                            }
-                            Spacer(modifier = Modifier.width(8.dp))
-                            Text(
-                                text = step,
-                                style = MaterialTheme.typography.bodyMedium,
-                                modifier = Modifier.weight(1f)
-                            )
-                        }
-                    }
+            Text(
+                text = lesson.title,
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold
+            )
+            Text(
+                text = lesson.summary,
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
 
-                    Surface(
-                        color = WarningAmberSoft,
-                        shape = RoundedCornerShape(12.dp)
-                    ) {
-                        Row(
-                            modifier = Modifier.padding(10.dp),
-                            verticalAlignment = Alignment.Top
-                        ) {
-                            Icon(
-                                Icons.Filled.Warning,
-                                contentDescription = null,
-                                tint = WarningAmber,
-                                modifier = Modifier.size(18.dp)
-                            )
-                            Spacer(modifier = Modifier.width(6.dp))
-                            Text(
-                                text = lesson.warningNote,
-                                style = MaterialTheme.typography.bodySmall
-                            )
-                        }
-                    }
-
-                    Text(
-                        text = "منبع: ${lesson.sourceNote}",
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = "${lesson.steps.size} گام • ${lesson.durationMinutes} دقیقه",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(
+                        imageVector = Icons.Filled.PlayCircle,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.size(18.dp)
                     )
-
-                    lesson.relatedCrisis?.let { related ->
-                        OutlinedButton(
-                            onClick = { onOpenCrisisGuide(related) },
-                            modifier = Modifier.minimumInteractiveComponentSize(),
-                            shape = RoundedCornerShape(12.dp)
-                        ) {
-                            Text("پیشنهاد آموزشی: مشاهده راهنمای ${related.titleFa}")
-                        }
-                    }
+                    Spacer(modifier = Modifier.width(4.dp))
+                    Text(
+                        text = "ورود به صفحه درس",
+                        style = MaterialTheme.typography.labelMedium,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.primary
+                    )
                 }
             }
         }
@@ -358,7 +328,7 @@ private fun LessonCard(
 }
 
 @Composable
-private fun QuizSessionView(
+fun QuizSessionView(
     uiState: TrainingUiState,
     onSelectAnswer: (Int) -> Unit,
     onNextQuestion: () -> Unit,
@@ -420,7 +390,7 @@ private fun QuizSessionView(
                             .testTag("quiz_finish_close_button"),
                         shape = RoundedCornerShape(14.dp)
                     ) {
-                        Text("بازگشت به آموزش‌ها")
+                        Text("بازگشت")
                     }
                 }
             }

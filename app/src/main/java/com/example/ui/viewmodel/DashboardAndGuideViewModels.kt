@@ -12,16 +12,14 @@ import com.example.data.local.entity.CrisisChecklistEntity
 import com.example.data.model.CrisisGuide
 import com.example.data.model.CrisisType
 import com.example.data.model.EmergencyContactNumber
-import com.example.data.model.SampleAdvisory
+import com.example.data.preferences.UserPreferencesRepository
 import com.example.data.preferences.UserSettings
 import com.example.data.repository.CrisisRepository
 import com.example.data.repository.FamilyRepository
 import com.example.data.repository.KitRepository
-import com.example.data.repository.ReportRepository
 import com.example.data.repository.SosRepository
 import com.example.data.repository.TrainingRepository
 import com.example.data.system.NetworkMonitor
-import com.example.data.preferences.UserPreferencesRepository
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -48,7 +46,6 @@ object AppViewModelProvider {
                 familyRepository = c.familyRepository,
                 trainingRepository = c.trainingRepository,
                 sosRepository = c.sosRepository,
-                reportRepository = c.reportRepository,
                 preferencesRepository = c.preferencesRepository,
                 networkMonitor = c.networkMonitor
             )
@@ -62,16 +59,6 @@ object AppViewModelProvider {
             SosViewModel(
                 sosRepository = c.sosRepository,
                 preferencesRepository = c.preferencesRepository,
-                locationTracker = c.locationTracker,
-                networkMonitor = c.networkMonitor
-            )
-        }
-        initializer {
-            val c = appContainer()
-            MapViewModel(
-                mapRepository = c.mapRepository,
-                preferencesRepository = c.preferencesRepository,
-                locationTracker = c.locationTracker,
                 networkMonitor = c.networkMonitor
             )
         }
@@ -85,24 +72,39 @@ object AppViewModelProvider {
         }
         initializer {
             val c = appContainer()
-            TrainingViewModel(c.trainingRepository)
-        }
-        initializer {
-            val c = appContainer()
-            ReportViewModel(
-                reportRepository = c.reportRepository,
-                locationTracker = c.locationTracker,
-                networkMonitor = c.networkMonitor
+            TrainingViewModel(
+                trainingRepository = c.trainingRepository,
+                mediaRepository = c.offlineMediaRepository,
+                networkMonitor = c.networkMonitor,
+                appContext = crisisApp()
             )
         }
         initializer {
             val c = appContainer()
             SettingsViewModel(
                 preferencesRepository = c.preferencesRepository,
-                mapRepository = c.mapRepository,
                 sosRepository = c.sosRepository,
-                reportRepository = c.reportRepository,
                 networkMonitor = c.networkMonitor
+            )
+        }
+        initializer {
+            val c = appContainer()
+            ScienceViewModel(
+                scienceRepository = c.scienceAndLabRepository,
+                trainingRepository = c.trainingRepository
+            )
+        }
+        initializer {
+            val c = appContainer()
+            ScenarioLabViewModel(c.scienceAndLabRepository)
+        }
+        initializer {
+            val c = appContainer()
+            MavaViewModel(
+                mavaRepository = c.mavaRepository,
+                mediaRepository = c.offlineMediaRepository,
+                networkMonitor = c.networkMonitor,
+                appContext = crisisApp()
             )
         }
     }
@@ -118,9 +120,9 @@ class MainAppViewModel(
 
     val isOnline: StateFlow<Boolean> = networkMonitor.isOnline
 
-    fun completeOnboarding(name: String, city: String, locationConsent: Boolean) {
+    fun completeOnboarding(name: String, city: String) {
         viewModelScope.launch {
-            preferencesRepository.completeOnboarding(name, city, locationConsent)
+            preferencesRepository.completeOnboarding(name, city)
         }
     }
 }
@@ -136,10 +138,8 @@ data class DashboardUiState(
     val hasFamilyPlan: Boolean = false,
     val quizzesCompletedCount: Int = 0,
     val queuedSosCount: Int = 0,
-    val queuedReportsCount: Int = 0,
     val lastOfflineSyncMillis: Long = 0L,
-    val emergencyNumbers: List<EmergencyContactNumber> = emptyList(),
-    val sampleAdvisories: List<SampleAdvisory> = emptyList()
+    val emergencyNumbers: List<EmergencyContactNumber> = emptyList()
 )
 
 class DashboardViewModel(
@@ -148,7 +148,6 @@ class DashboardViewModel(
     familyRepository: FamilyRepository,
     trainingRepository: TrainingRepository,
     sosRepository: SosRepository,
-    reportRepository: ReportRepository,
     preferencesRepository: UserPreferencesRepository,
     networkMonitor: NetworkMonitor
 ) : ViewModel() {
@@ -188,9 +187,8 @@ class DashboardViewModel(
         baseStatsFlow,
         preferencesRepository.userSettings,
         networkMonitor.isOnline,
-        sosRepository.observeQueuedCount(),
-        reportRepository.observeQueuedCount()
-    ) { metrics, settings, online, queuedSos, queuedReports ->
+        sosRepository.observeQueuedCount()
+    ) { metrics, settings, online, queuedSos ->
         DashboardUiState(
             userName = settings.userName,
             userCity = settings.userCity,
@@ -202,17 +200,14 @@ class DashboardViewModel(
             hasFamilyPlan = metrics.hasFamilyPlan,
             quizzesCompletedCount = metrics.quizzesCompletedCount,
             queuedSosCount = queuedSos,
-            queuedReportsCount = queuedReports,
             lastOfflineSyncMillis = settings.lastOfflineSyncMillis,
-            emergencyNumbers = crisisRepository.getEmergencyNumbers(),
-            sampleAdvisories = crisisRepository.getSampleAdvisories()
+            emergencyNumbers = crisisRepository.getEmergencyNumbers()
         )
     }.stateIn(
         scope = viewModelScope,
         started = SharingStarted.WhileSubscribed(5000),
         initialValue = DashboardUiState(
-            emergencyNumbers = crisisRepository.getEmergencyNumbers(),
-            sampleAdvisories = crisisRepository.getSampleAdvisories()
+            emergencyNumbers = crisisRepository.getEmergencyNumbers()
         )
     )
 

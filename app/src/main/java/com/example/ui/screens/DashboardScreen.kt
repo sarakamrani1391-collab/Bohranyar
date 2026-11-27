@@ -21,11 +21,14 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Backpack
+import androidx.compose.material.icons.filled.Biotech
+import androidx.compose.material.icons.filled.ChildCare
 import androidx.compose.material.icons.filled.FamilyRestroom
-import androidx.compose.material.icons.filled.Map
+import androidx.compose.material.icons.filled.HelpOutline
+import androidx.compose.material.icons.filled.MedicalServices
 import androidx.compose.material.icons.filled.MenuBook
-import androidx.compose.material.icons.filled.ReportProblem
-import androidx.compose.material.icons.filled.School
+import androidx.compose.material.icons.filled.Psychology
+import androidx.compose.material.icons.filled.Science
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Sos
 import androidx.compose.material3.Button
@@ -54,15 +57,20 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import com.example.data.model.MavaCharacterId
 import com.example.data.system.PersianTimeFormatter
 import com.example.ui.components.ConnectivityChip
-import com.example.ui.components.DemoDataBadge
 import com.example.ui.components.EmergencyDialCard
+import com.example.ui.components.MavaCharacterAvatar
 import com.example.ui.components.OfflineStatusBanner
 import com.example.ui.components.SectionHeader
 import com.example.ui.components.dialNumber
 import com.example.ui.theme.EmergencyRed
 import com.example.ui.theme.EmergencyRedSoft
+import com.example.ui.theme.MavaInk
+import com.example.ui.theme.MavaInkSoft
+import com.example.ui.theme.MavaLavender
+import com.example.ui.theme.MavaPink
 import com.example.ui.viewmodel.DashboardUiState
 
 @Composable
@@ -70,11 +78,14 @@ fun DashboardScreen(
     uiState: DashboardUiState,
     onNavigateToSos: () -> Unit,
     onNavigateToCrises: () -> Unit,
-    onNavigateToMap: () -> Unit,
+    onNavigateToTraining: () -> Unit,
+    onNavigateToEncyclopedia: () -> Unit,
+    onNavigateToWhyItHappens: () -> Unit,
+    onNavigateToVirtualLab: () -> Unit,
+    onNavigateToScenarioLab: () -> Unit,
     onNavigateToFamily: () -> Unit,
     onNavigateToKit: () -> Unit,
-    onNavigateToTraining: () -> Unit,
-    onNavigateToReports: () -> Unit,
+    onNavigateToMava: () -> Unit,
     onNavigateToSettings: () -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -106,7 +117,7 @@ fun DashboardScreen(
                             color = MaterialTheme.colorScheme.onBackground
                         )
                         Text(
-                            text = "منطقه: ${uiState.userCity} • دستیار آمادگی و امداد",
+                            text = "منطقه: ${uiState.userCity} • آمادگی، آموزش علمی و ایمنی خانواده",
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
@@ -136,7 +147,7 @@ fun DashboardScreen(
                 OfflineStatusBanner(
                     isOnline = uiState.isOnline,
                     lastSyncFormatted = PersianTimeFormatter.formatTimestamp(uiState.lastOfflineSyncMillis),
-                    queuedCount = uiState.queuedSosCount + uiState.queuedReportsCount
+                    queuedCount = uiState.queuedSosCount
                 )
             }
 
@@ -163,7 +174,7 @@ fun DashboardScreen(
                             )
                             Spacer(modifier = Modifier.height(4.dp))
                             Text(
-                                text = "ارسال پیام آماده با موقعیت مکانی یا ذخیره در صف آفلاین",
+                                text = "تماس سریع، پیام آماده و ثبت آفلاین درخواست کمک",
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurface
                             )
@@ -208,11 +219,51 @@ fun DashboardScreen(
                 )
             }
 
-            // Quick Services Grid
+            // Distinct Toddler Sanctuary Entry Card ("مأوا")
+            item {
+                Card(
+                    onClick = onNavigateToMava,
+                    colors = CardDefaults.cardColors(containerColor = MavaLavender.copy(alpha = 0.78f)),
+                    shape = RoundedCornerShape(24.dp),
+                    border = BorderStroke(1.5.dp, MavaPink),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .testTag("tile_mava")
+                ) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(14.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        MavaCharacterAvatar(character = MavaCharacterId.PUFI, size = 66.dp)
+                        Spacer(modifier = Modifier.width(12.dp))
+                        Column(modifier = Modifier.weight(1f)) {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Icon(Icons.Filled.ChildCare, contentDescription = null, tint = MavaInk, modifier = Modifier.size(18.dp))
+                                Spacer(modifier = Modifier.width(4.dp))
+                                Text(
+                                    text = "بخش کودکانه «مأوا»",
+                                    style = MaterialTheme.typography.titleMedium,
+                                    fontWeight = FontWeight.Bold,
+                                    color = MavaInk
+                                )
+                            }
+                            Text(
+                                text = "دنیای کوچک آرامش و لبخند (۱ تا ۳ سال) • قصه، بازی، آرامش و کنترل والدین",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MavaInkSoft
+                            )
+                        }
+                    }
+                }
+            }
+
+            // All Core Sections Grid
             item {
                 SectionHeader(
-                    title = "دسترسی سریع به بخش‌ها",
-                    subtitle = "تمام امکانات اصلی بدون اینترنت فعال هستند"
+                    title = "بخش‌های آموزشی، علمی و آمادگی",
+                    subtitle = "همه بخش‌ها بدون نیاز به اینترنت در دسترس هستند"
                 )
                 Spacer(modifier = Modifier.height(10.dp))
                 Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
@@ -229,11 +280,53 @@ fun DashboardScreen(
                             modifier = Modifier.weight(1f)
                         )
                         QuickModuleTile(
-                            title = "نقشه و پناهگاه",
-                            subtitle = "مراکز درمانی و امن",
-                            icon = Icons.Filled.Map,
-                            onClick = onNavigateToMap,
-                            testTag = "tile_map",
+                            title = "آموزش کمک‌های اولیه",
+                            subtitle = "۷ درس ویدئویی + آزمون",
+                            icon = Icons.Filled.MedicalServices,
+                            onClick = onNavigateToTraining,
+                            testTag = "tile_training",
+                            modifier = Modifier.weight(1f)
+                        )
+                    }
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(10.dp)
+                    ) {
+                        QuickModuleTile(
+                            title = "دانشنامه علم و بحران",
+                            subtitle = "علوم هفتم، هشتم و نهم",
+                            icon = Icons.Filled.Science,
+                            onClick = onNavigateToEncyclopedia,
+                            testTag = "tile_encyclopedia",
+                            modifier = Modifier.weight(1f)
+                        )
+                        QuickModuleTile(
+                            title = "چرا این اتفاق می‌افتد؟",
+                            subtitle = "پرسش‌های علمی کاربردی",
+                            icon = Icons.Filled.HelpOutline,
+                            onClick = onNavigateToWhyItHappens,
+                            testTag = "tile_why",
+                            modifier = Modifier.weight(1f)
+                        )
+                    }
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(10.dp)
+                    ) {
+                        QuickModuleTile(
+                            title = "آزمایشگاه مجازی",
+                            subtitle = "۶ شبیه‌سازی تعاملی",
+                            icon = Icons.Filled.Biotech,
+                            onClick = onNavigateToVirtualLab,
+                            testTag = "tile_virtual_lab",
+                            modifier = Modifier.weight(1f)
+                        )
+                        QuickModuleTile(
+                            title = "آزمایشگاه سناریوها",
+                            subtitle = "۶ موقعیت تصمیم‌گیری",
+                            icon = Icons.Filled.Psychology,
+                            onClick = onNavigateToScenarioLab,
+                            testTag = "tile_scenario_lab",
                             modifier = Modifier.weight(1f)
                         )
                     }
@@ -250,32 +343,11 @@ fun DashboardScreen(
                             modifier = Modifier.weight(1f)
                         )
                         QuickModuleTile(
-                            title = "کیف اضطراری",
+                            title = "کیف اضطراری و ابزار",
                             subtitle = "${uiState.kitPreparedCount} از ${uiState.kitTotalCount} آماده",
                             icon = Icons.Filled.Backpack,
                             onClick = onNavigateToKit,
                             testTag = "tile_kit",
-                            modifier = Modifier.weight(1f)
-                        )
-                    }
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(10.dp)
-                    ) {
-                        QuickModuleTile(
-                            title = "آموزش و آزمون",
-                            subtitle = "کمک‌های اولیه و ایمنی",
-                            icon = Icons.Filled.School,
-                            onClick = onNavigateToTraining,
-                            testTag = "tile_training",
-                            modifier = Modifier.weight(1f)
-                        )
-                        QuickModuleTile(
-                            title = "گزارش شهری",
-                            subtitle = "مسیر، آب‌گرفتگی، خطر",
-                            icon = Icons.Filled.ReportProblem,
-                            onClick = onNavigateToReports,
-                            testTag = "tile_reports",
                             modifier = Modifier.weight(1f)
                         )
                     }
@@ -313,42 +385,6 @@ fun DashboardScreen(
                             }
                             if (pair.size == 1) {
                                 Spacer(modifier = Modifier.weight(1f))
-                            }
-                        }
-                    }
-                }
-            }
-
-            // Sample / Demo Advisories (transparently marked!)
-            item {
-                SectionHeader(
-                    title = "اطلاعیه‌ها و هشدارها",
-                    subtitle = "اطلاعات آزمایشی از هشدارهای رسمی متمایز شده‌اند"
-                )
-                Spacer(modifier = Modifier.height(8.dp))
-                Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                    uiState.sampleAdvisories.forEach { advisory ->
-                        Card(
-                            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-                            shape = RoundedCornerShape(18.dp),
-                            border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.45f))
-                        ) {
-                            Column(
-                                modifier = Modifier.padding(14.dp),
-                                verticalArrangement = Arrangement.spacedBy(6.dp)
-                            ) {
-                                DemoDataBadge()
-                                Text(
-                                    text = advisory.title,
-                                    style = MaterialTheme.typography.titleSmall,
-                                    fontWeight = FontWeight.Bold,
-                                    color = MaterialTheme.colorScheme.onSurface
-                                )
-                                Text(
-                                    text = advisory.body,
-                                    style = MaterialTheme.typography.bodySmall,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                                )
                             }
                         }
                     }

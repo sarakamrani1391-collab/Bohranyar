@@ -6,27 +6,28 @@ import androidx.room.Room
 import androidx.room.RoomDatabase
 import androidx.room.TypeConverter
 import androidx.room.TypeConverters
+import androidx.room.migration.Migration
+import androidx.sqlite.db.SupportSQLiteDatabase
 import com.example.data.local.dao.CrisisChecklistDao
 import com.example.data.local.dao.EmergencyKitDao
 import com.example.data.local.dao.FamilyDao
-import com.example.data.local.dao.ShelterDao
+import com.example.data.local.dao.MavaSettingsDao
+import com.example.data.local.dao.OfflineMediaDao
 import com.example.data.local.dao.SosRequestDao
 import com.example.data.local.dao.TrainingDao
-import com.example.data.local.dao.UrbanReportDao
 import com.example.data.local.entity.CrisisChecklistEntity
 import com.example.data.local.entity.EmergencyKitItemEntity
 import com.example.data.local.entity.FamilyMemberEntity
 import com.example.data.local.entity.FamilyPlanEntity
 import com.example.data.local.entity.FamilySafetyStatus
 import com.example.data.local.entity.KitCategory
+import com.example.data.local.entity.MavaSettingsEntity
+import com.example.data.local.entity.MediaCategory
+import com.example.data.local.entity.MediaDownloadStatus
+import com.example.data.local.entity.OfflineMediaEntity
 import com.example.data.local.entity.QuizProgressEntity
-import com.example.data.local.entity.ShelterPointEntity
-import com.example.data.local.entity.ShelterType
 import com.example.data.local.entity.SosRequestEntity
 import com.example.data.local.entity.SosStatus
-import com.example.data.local.entity.UrbanReportCategory
-import com.example.data.local.entity.UrbanReportEntity
-import com.example.data.local.entity.UrbanReportStatus
 
 class RoomConverters {
     @TypeConverter fun fromKitCategory(value: KitCategory): String = value.name
@@ -38,14 +39,11 @@ class RoomConverters {
     @TypeConverter fun fromSosStatus(value: SosStatus): String = value.name
     @TypeConverter fun toSosStatus(value: String): SosStatus = enumValueOf(value)
 
-    @TypeConverter fun fromReportCategory(value: UrbanReportCategory): String = value.name
-    @TypeConverter fun toReportCategory(value: String): UrbanReportCategory = enumValueOf(value)
+    @TypeConverter fun fromMediaCategory(value: MediaCategory): String = value.name
+    @TypeConverter fun toMediaCategory(value: String): MediaCategory = enumValueOf(value)
 
-    @TypeConverter fun fromReportStatus(value: UrbanReportStatus): String = value.name
-    @TypeConverter fun toReportStatus(value: String): UrbanReportStatus = enumValueOf(value)
-
-    @TypeConverter fun fromShelterType(value: ShelterType): String = value.name
-    @TypeConverter fun toShelterType(value: String): ShelterType = enumValueOf(value)
+    @TypeConverter fun fromMediaDownloadStatus(value: MediaDownloadStatus): String = value.name
+    @TypeConverter fun toMediaDownloadStatus(value: String): MediaDownloadStatus = enumValueOf(value)
 }
 
 @Database(
@@ -55,11 +53,11 @@ class RoomConverters {
         FamilyMemberEntity::class,
         FamilyPlanEntity::class,
         SosRequestEntity::class,
-        UrbanReportEntity::class,
-        ShelterPointEntity::class,
-        QuizProgressEntity::class
+        QuizProgressEntity::class,
+        OfflineMediaEntity::class,
+        MavaSettingsEntity::class
     ],
-    version = 1,
+    version = 2,
     exportSchema = false
 )
 @TypeConverters(RoomConverters::class)
@@ -68,13 +66,53 @@ abstract class AppDatabase : RoomDatabase() {
     abstract fun emergencyKitDao(): EmergencyKitDao
     abstract fun familyDao(): FamilyDao
     abstract fun sosRequestDao(): SosRequestDao
-    abstract fun urbanReportDao(): UrbanReportDao
-    abstract fun shelterDao(): ShelterDao
     abstract fun trainingDao(): TrainingDao
+    abstract fun offlineMediaDao(): OfflineMediaDao
+    abstract fun mavaSettingsDao(): MavaSettingsDao
 
     companion object {
         @Volatile
         private var INSTANCE: AppDatabase? = null
+
+        val MIGRATION_1_2 = object : Migration(1, 2) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("DROP TABLE IF EXISTS shelter_points")
+                db.execSQL("DROP TABLE IF EXISTS urban_reports")
+                db.execSQL(
+                    """
+                    CREATE TABLE IF NOT EXISTS offline_media_assets (
+                        mediaId TEXT NOT NULL PRIMARY KEY,
+                        category TEXT NOT NULL,
+                        title TEXT NOT NULL,
+                        description TEXT NOT NULL,
+                        sourceAttribution TEXT NOT NULL,
+                        streamUrl TEXT,
+                        localFilePath TEXT,
+                        status TEXT NOT NULL,
+                        durationLabel TEXT NOT NULL,
+                        updatedAtMillis INTEGER NOT NULL
+                    )
+                    """.trimIndent()
+                )
+                db.execSQL(
+                    """
+                    CREATE TABLE IF NOT EXISTS mava_settings (
+                        id INTEGER NOT NULL PRIMARY KEY,
+                        ageGroup TEXT NOT NULL,
+                        soundEnabled INTEGER NOT NULL,
+                        dailyLimitMinutes INTEGER NOT NULL,
+                        gamesEnabled INTEGER NOT NULL,
+                        storiesEnabled INTEGER NOT NULL,
+                        calmEnabled INTEGER NOT NULL,
+                        emotionsEnabled INTEGER NOT NULL,
+                        cartoonsEnabled INTEGER NOT NULL,
+                        discoveryEnabled INTEGER NOT NULL,
+                        updatedAtMillis INTEGER NOT NULL
+                    )
+                    """.trimIndent()
+                )
+            }
+        }
 
         fun getInstance(context: Context): AppDatabase {
             return INSTANCE ?: synchronized(this) {
@@ -82,7 +120,10 @@ abstract class AppDatabase : RoomDatabase() {
                     context.applicationContext,
                     AppDatabase::class.java,
                     "hamyar_bohran.db"
-                ).build().also { INSTANCE = it }
+                )
+                    .addMigrations(MIGRATION_1_2)
+                    .build()
+                    .also { INSTANCE = it }
             }
         }
     }

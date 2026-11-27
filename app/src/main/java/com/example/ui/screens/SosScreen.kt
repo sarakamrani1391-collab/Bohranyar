@@ -1,8 +1,5 @@
 package com.example.ui.screens
 
-import android.Manifest
-import androidx.activity.compose.rememberLauncherForActivityResult
-import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
@@ -26,8 +23,6 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.CloudOff
 import androidx.compose.material.icons.filled.Delete
-import androidx.compose.material.icons.filled.LocationOn
-import androidx.compose.material.icons.filled.MyLocation
 import androidx.compose.material.icons.filled.Phone
 import androidx.compose.material.icons.filled.Share
 import androidx.compose.material.icons.filled.Sms
@@ -38,7 +33,6 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.Icon
@@ -48,7 +42,6 @@ import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
-import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.minimumInteractiveComponentSize
@@ -71,48 +64,33 @@ import com.example.ui.components.dialNumber
 import com.example.ui.components.openSmsComposer
 import com.example.ui.components.shareEmergencyText
 import com.example.ui.theme.EmergencyRed
-import com.example.ui.theme.EmergencyRedSoft
 import com.example.ui.theme.SafeGreen
 import com.example.ui.theme.SafeGreenSoft
 import com.example.ui.theme.WarningAmber
 import com.example.ui.theme.WarningAmberSoft
 import com.example.ui.viewmodel.SosUiState
-import java.util.Locale
 
 @Composable
 fun SosScreen(
     uiState: SosUiState,
     onSelectType: (String) -> Unit,
+    onUpdateAddressNote: (String) -> Unit,
     onUpdateNote: (String) -> Unit,
-    onSetIncludeLocation: (Boolean) -> Unit,
-    onFetchLocation: () -> Unit,
     onSubmitSos: () -> Unit,
     onMarkShared: (Int) -> Unit,
     onSyncQueued: () -> Unit,
     onDeleteRequest: (Int) -> Unit,
+    onBack: (() -> Unit)? = null,
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
     var showConfirmDialog by rememberSaveable { mutableStateOf(false) }
 
-    val permissionLauncher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.RequestMultiplePermissions()
-    ) { result ->
-        val granted = result[Manifest.permission.ACCESS_FINE_LOCATION] == true ||
-            result[Manifest.permission.ACCESS_COARSE_LOCATION] == true
-        if (granted) {
-            onSetIncludeLocation(true)
-            onFetchLocation()
-        } else {
-            onSetIncludeLocation(false)
-        }
-    }
-
     val emergencyTypes = listOf(
         "درخواست امداد فوری",
         "اورژانس پزشکی",
         "آتش‌سوزی / حریق",
-        "محبوس شدن زیر آوار",
+        "محبوس شدن",
         "سیل و آب‌گرفتگی",
         "نیاز به پناهگاه"
     )
@@ -123,6 +101,7 @@ fun SosScreen(
         topBar = {
             HamyarTopBar(
                 title = "درخواست کمک اضطراری",
+                onBackClick = onBack,
                 isOnline = uiState.isOnline
             )
         }
@@ -140,7 +119,6 @@ fun SosScreen(
                 contentPadding = PaddingValues(horizontal = 16.dp, vertical = 12.dp),
                 verticalArrangement = Arrangement.spacedBy(14.dp)
             ) {
-                // Direct dial bar
                 item {
                     Row(
                         modifier = Modifier.fillMaxWidth(),
@@ -188,7 +166,6 @@ fun SosScreen(
                     }
                 }
 
-                // SOS Configuration Card
                 item {
                     Card(
                         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
@@ -225,9 +202,20 @@ fun SosScreen(
                             }
 
                             OutlinedTextField(
+                                value = uiState.addressNote,
+                                onValueChange = onUpdateAddressNote,
+                                label = { Text("نشانی یا محل تقریبی (اختیاری)") },
+                                singleLine = true,
+                                shape = RoundedCornerShape(14.dp),
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .testTag("sos_address_input")
+                            )
+
+                            OutlinedTextField(
                                 value = uiState.customNote,
                                 onValueChange = onUpdateNote,
-                                label = { Text("توضیحات تکمیلی (مثلاً تعداد افراد، آدرس تقریبی یا آسیب)") },
+                                label = { Text("توضیحات تکمیلی (مثلاً تعداد افراد یا نوع آسیب)") },
                                 minLines = 2,
                                 maxLines = 4,
                                 shape = RoundedCornerShape(14.dp),
@@ -236,95 +224,6 @@ fun SosScreen(
                                     .testTag("sos_note_input")
                             )
 
-                            // Location Consent & Fetch
-                            Surface(
-                                color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f),
-                                shape = RoundedCornerShape(16.dp)
-                            ) {
-                                Column(
-                                    modifier = Modifier.padding(12.dp),
-                                    verticalArrangement = Arrangement.spacedBy(8.dp)
-                                ) {
-                                    Row(
-                                        modifier = Modifier.fillMaxWidth(),
-                                        verticalAlignment = Alignment.CenterVertically,
-                                        horizontalArrangement = Arrangement.SpaceBetween
-                                    ) {
-                                        Row(
-                                            verticalAlignment = Alignment.CenterVertically,
-                                            modifier = Modifier.weight(1f)
-                                        ) {
-                                            Icon(
-                                                Icons.Filled.LocationOn,
-                                                contentDescription = "موقعیت مکانی",
-                                                tint = MaterialTheme.colorScheme.primary
-                                            )
-                                            Spacer(modifier = Modifier.width(8.dp))
-                                            Text(
-                                                text = "ارسال موقعیت مکانی با اجازه شما",
-                                                style = MaterialTheme.typography.labelLarge
-                                            )
-                                        }
-                                        Switch(
-                                            checked = uiState.includeLocation,
-                                            onCheckedChange = onSetIncludeLocation,
-                                            modifier = Modifier.testTag("sos_location_switch")
-                                        )
-                                    }
-
-                                    if (uiState.includeLocation) {
-                                        Row(
-                                            modifier = Modifier.fillMaxWidth(),
-                                            verticalAlignment = Alignment.CenterVertically,
-                                            horizontalArrangement = Arrangement.SpaceBetween
-                                        ) {
-                                            val locText = uiState.currentLocation?.let {
-                                                String.format(Locale.US, "%.5f, %.5f", it.latitude, it.longitude)
-                                            } ?: "مختصات هنوز دریافت نشده"
-                                            Text(
-                                                text = locText,
-                                                style = MaterialTheme.typography.bodySmall,
-                                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                                modifier = Modifier.weight(1f)
-                                            )
-                                            OutlinedButton(
-                                                onClick = {
-                                                    permissionLauncher.launch(
-                                                        arrayOf(
-                                                            Manifest.permission.ACCESS_COARSE_LOCATION,
-                                                            Manifest.permission.ACCESS_FINE_LOCATION
-                                                        )
-                                                    )
-                                                },
-                                                modifier = Modifier
-                                                    .minimumInteractiveComponentSize()
-                                                    .testTag("sos_fetch_location_button"),
-                                                shape = RoundedCornerShape(12.dp)
-                                            ) {
-                                                if (uiState.isFetchingLocation) {
-                                                    CircularProgressIndicator(
-                                                        modifier = Modifier.size(16.dp),
-                                                        strokeWidth = 2.dp
-                                                    )
-                                                } else {
-                                                    Icon(Icons.Filled.MyLocation, contentDescription = null, modifier = Modifier.size(16.dp))
-                                                }
-                                                Spacer(modifier = Modifier.width(6.dp))
-                                                Text("دریافت GPS")
-                                            }
-                                        }
-                                        uiState.locationError?.let { err ->
-                                            Text(
-                                                text = err,
-                                                style = MaterialTheme.typography.bodySmall,
-                                                color = EmergencyRed
-                                            )
-                                        }
-                                    }
-                                }
-                            }
-
-                            // Ready message preview
                             Surface(
                                 color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.45f),
                                 shape = RoundedCornerShape(14.dp)
@@ -345,7 +244,6 @@ fun SosScreen(
                                 }
                             }
 
-                            // Primary SOS Trigger
                             Button(
                                 onClick = { showConfirmDialog = true },
                                 colors = ButtonDefaults.buttonColors(
@@ -371,7 +269,6 @@ fun SosScreen(
                                 )
                             }
 
-                            // Direct SMS & Share actions
                             Row(
                                 modifier = Modifier.fillMaxWidth(),
                                 horizontalArrangement = Arrangement.spacedBy(8.dp)
@@ -409,7 +306,6 @@ fun SosScreen(
                     }
                 }
 
-                // Sync queued offline banner
                 val queuedCount = uiState.history.count { it.status == SosStatus.QUEUED_OFFLINE }
                 if (queuedCount > 0) {
                     item {
@@ -447,7 +343,6 @@ fun SosScreen(
                     }
                 }
 
-                // History section
                 item {
                     Text(
                         text = "تاریخچه درخواست‌های ثبت‌شده (${uiState.history.size})",
@@ -510,16 +405,14 @@ fun SosScreen(
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
-                            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                                OutlinedButton(
-                                    onClick = {
-                                        openSmsComposer(context, "", req.message)
-                                        onMarkShared(req.id)
-                                    },
-                                    modifier = Modifier.minimumInteractiveComponentSize()
-                                ) {
-                                    Text("ارسال پیامکی")
-                                }
+                            OutlinedButton(
+                                onClick = {
+                                    openSmsComposer(context, "", req.message)
+                                    onMarkShared(req.id)
+                                },
+                                modifier = Modifier.minimumInteractiveComponentSize()
+                            ) {
+                                Text("ارسال پیامکی")
                             }
                         }
                     }

@@ -10,12 +10,13 @@ import com.example.data.local.entity.EmergencyKitItemEntity
 import com.example.data.local.entity.FamilyMemberEntity
 import com.example.data.local.entity.FamilyPlanEntity
 import com.example.data.local.entity.FamilySafetyStatus
+import com.example.data.local.entity.MavaSettingsEntity
+import com.example.data.local.entity.MediaCategory
+import com.example.data.local.entity.MediaDownloadStatus
+import com.example.data.local.entity.OfflineMediaEntity
 import com.example.data.local.entity.QuizProgressEntity
-import com.example.data.local.entity.ShelterPointEntity
 import com.example.data.local.entity.SosRequestEntity
 import com.example.data.local.entity.SosStatus
-import com.example.data.local.entity.UrbanReportEntity
-import com.example.data.local.entity.UrbanReportStatus
 import kotlinx.coroutines.flow.Flow
 
 @Dao
@@ -103,55 +104,47 @@ interface SosRequestDao {
 }
 
 @Dao
-interface UrbanReportDao {
-    @Query("SELECT * FROM urban_reports ORDER BY createdAtMillis DESC")
-    fun getAllReports(): Flow<List<UrbanReportEntity>>
-
-    @Query("SELECT COUNT(*) FROM urban_reports WHERE status = :status")
-    fun countByStatus(status: UrbanReportStatus): Flow<Int>
-
-    @Query("SELECT COUNT(*) FROM urban_reports")
-    suspend fun getCount(): Int
-
-    @Insert(onConflict = OnConflictStrategy.REPLACE)
-    suspend fun insertAll(reports: List<UrbanReportEntity>)
-
-    @Insert(onConflict = OnConflictStrategy.REPLACE)
-    suspend fun insert(report: UrbanReportEntity): Long
-
-    @Query("UPDATE urban_reports SET status = :newStatus WHERE status = :oldStatus AND isDemoData = 0")
-    suspend fun syncOfflineReports(oldStatus: UrbanReportStatus, newStatus: UrbanReportStatus)
-
-    @Query("DELETE FROM urban_reports WHERE id = :id")
-    suspend fun deleteById(id: Int)
-}
-
-@Dao
-interface ShelterDao {
-    @Query("SELECT * FROM shelter_points ORDER BY isVerified DESC, isDemoData ASC, id ASC")
-    fun getAllShelters(): Flow<List<ShelterPointEntity>>
-
-    @Query("SELECT COUNT(*) FROM shelter_points")
-    suspend fun getCount(): Int
-
-    @Insert(onConflict = OnConflictStrategy.REPLACE)
-    suspend fun insertAll(shelters: List<ShelterPointEntity>)
-
-    @Insert(onConflict = OnConflictStrategy.REPLACE)
-    suspend fun insert(shelter: ShelterPointEntity)
-
-    @Query("DELETE FROM shelter_points WHERE id = :id")
-    suspend fun deleteById(id: Int)
-
-    @Query("UPDATE shelter_points SET cachedAtMillis = :timestamp")
-    suspend fun updateCacheTimestamp(timestamp: Long)
-}
-
-@Dao
 interface TrainingDao {
     @Query("SELECT * FROM quiz_progress")
     fun getAllProgress(): Flow<List<QuizProgressEntity>>
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun upsertProgress(progress: QuizProgressEntity)
+}
+
+@Dao
+interface OfflineMediaDao {
+    @Query("SELECT * FROM offline_media_assets WHERE category = :category")
+    fun getByCategory(category: MediaCategory): Flow<List<OfflineMediaEntity>>
+
+    @Query("SELECT * FROM offline_media_assets")
+    fun getAll(): Flow<List<OfflineMediaEntity>>
+
+    @Query("SELECT * FROM offline_media_assets WHERE mediaId = :mediaId")
+    fun observeById(mediaId: String): Flow<OfflineMediaEntity?>
+
+    @Query("SELECT COUNT(*) FROM offline_media_assets")
+    suspend fun getCount(): Int
+
+    @Insert(onConflict = OnConflictStrategy.IGNORE)
+    suspend fun insertMissing(items: List<OfflineMediaEntity>)
+
+    @Query(
+        "UPDATE offline_media_assets SET localFilePath = :localPath, status = :status, updatedAtMillis = :updatedAt WHERE mediaId = :mediaId"
+    )
+    suspend fun updateLocalFile(
+        mediaId: String,
+        localPath: String?,
+        status: MediaDownloadStatus,
+        updatedAt: Long
+    )
+}
+
+@Dao
+interface MavaSettingsDao {
+    @Query("SELECT * FROM mava_settings WHERE id = 1")
+    fun observeSettings(): Flow<MavaSettingsEntity?>
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun upsert(settings: MavaSettingsEntity)
 }

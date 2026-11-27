@@ -22,24 +22,16 @@ enum class SosStatus(val titleFa: String) {
     SHARED_BY_USER("ارسال‌شده از طریق پیامک/تماس")
 }
 
-enum class UrbanReportCategory(val titleFa: String) {
-    ROAD_BLOCKAGE("انسداد مسیر"),
-    FLOODING("آب‌گرفتگی"),
-    INFRASTRUCTURE("خرابی زیرساخت"),
-    ENVIRONMENTAL("خطر محیطی")
+enum class MediaCategory {
+    FIRST_AID,
+    MAVA_CARTOON
 }
 
-enum class UrbanReportStatus(val titleFa: String) {
-    QUEUED_OFFLINE("ذخیره آفلاین (در انتظار اتصال)"),
-    SUBMITTED_UNVERIFIED("ثبت‌شده (تأییدنشده)"),
-    VERIFIED("تأییدشده")
-}
-
-enum class ShelterType(val titleFa: String) {
-    HOSPITAL("بیمارستان و مرکز درمانی"),
-    RELIEF_CENTER("مرکز امدادی / آتش‌نشانی"),
-    SAFE_ZONE("نقطه امن و اسکان باز"),
-    FAMILY_POINT("نقطه امن شخصی / خانواده")
+enum class MediaDownloadStatus(val titleFa: String) {
+    NOT_LINKED("منبع رسمی هنوز متصل نشده"),
+    NOT_DOWNLOADED("آماده دانلود"),
+    DOWNLOADING("در حال دانلود..."),
+    DOWNLOADED("ذخیره‌شده برای پخش آفلاین")
 }
 
 @Entity(tableName = "crisis_checklists")
@@ -97,40 +89,39 @@ data class SosRequestEntity(
     val createdAtMillis: Long = System.currentTimeMillis()
 )
 
-@Entity(tableName = "urban_reports")
-data class UrbanReportEntity(
-    @PrimaryKey(autoGenerate = true) val id: Int = 0,
-    val category: UrbanReportCategory,
-    val title: String,
-    val description: String,
-    val imagePath: String? = null,
-    val latitude: Double? = null,
-    val longitude: Double? = null,
-    val locationConsentGiven: Boolean = false,
-    val status: UrbanReportStatus = UrbanReportStatus.QUEUED_OFFLINE,
-    val isDemoData: Boolean = false,
-    val createdAtMillis: Long = System.currentTimeMillis()
-)
-
-@Entity(tableName = "shelter_points")
-data class ShelterPointEntity(
-    @PrimaryKey(autoGenerate = true) val id: Int = 0,
-    val name: String,
-    val type: ShelterType,
-    val address: String,
-    val latitude: Double,
-    val longitude: Double,
-    val capacityNote: String = "",
-    val phone: String = "",
-    val isVerified: Boolean = false,
-    val isDemoData: Boolean = true,
-    val cachedAtMillis: Long = System.currentTimeMillis()
-)
-
 @Entity(tableName = "quiz_progress")
 data class QuizProgressEntity(
     @PrimaryKey val topicId: String,
     val bestScore: Int,
     val totalQuestions: Int,
     val completedAtMillis: Long = System.currentTimeMillis()
+)
+
+@Entity(tableName = "offline_media_assets")
+data class OfflineMediaEntity(
+    @PrimaryKey val mediaId: String,
+    val category: MediaCategory,
+    val title: String,
+    val description: String,
+    val sourceAttribution: String,
+    val streamUrl: String?,
+    val localFilePath: String?,
+    val status: MediaDownloadStatus,
+    val durationLabel: String,
+    val updatedAtMillis: Long = System.currentTimeMillis()
+)
+
+@Entity(tableName = "mava_settings")
+data class MavaSettingsEntity(
+    @PrimaryKey val id: Int = 1,
+    val ageGroup: String = "1_3",
+    val soundEnabled: Boolean = true,
+    val dailyLimitMinutes: Int = 20,
+    val gamesEnabled: Boolean = true,
+    val storiesEnabled: Boolean = true,
+    val calmEnabled: Boolean = true,
+    val emotionsEnabled: Boolean = true,
+    val cartoonsEnabled: Boolean = true,
+    val discoveryEnabled: Boolean = true,
+    val updatedAtMillis: Long = System.currentTimeMillis()
 )

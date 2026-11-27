@@ -25,6 +25,16 @@ val WarningAmberSoft = Color(0xFFFEF3C7)
 val SafeGreen = Color(0xFF2E7D32)
 val SafeGreenSoft = Color(0xFFE8F5E9)
 
+// Ma'va Toddler Sanctuary Pastel Palette
+val MavaPink = Color(0xFFF4DDE0)
+val MavaMint = Color(0xFFDCEDE5)
+val MavaLavender = Color(0xFFE7E1F4)
+val MavaCreamYellow = Color(0xFFF9EBCB)
+val MavaSkyBlue = Color(0xFFDDEAF6)
+val MavaPeach = Color(0xFFF7E5D4)
+val MavaInk = Color(0xFF3E3A46)
+val MavaInkSoft = Color(0xFF676172)
+
 // Dark theme counterparts
 val DarkBackground = Color(0xFF151912)
 val DarkSurface = Color(0xFF1E231A)

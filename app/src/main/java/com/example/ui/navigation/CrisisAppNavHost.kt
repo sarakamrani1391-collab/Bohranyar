@@ -6,15 +6,15 @@ import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.ChildCare
 import androidx.compose.material.icons.filled.Home
-import androidx.compose.material.icons.filled.Map
 import androidx.compose.material.icons.filled.MenuBook
-import androidx.compose.material.icons.filled.ReportProblem
+import androidx.compose.material.icons.filled.Science
 import androidx.compose.material.icons.filled.Sos
+import androidx.compose.material.icons.outlined.ChildCare
 import androidx.compose.material.icons.outlined.Home
-import androidx.compose.material.icons.outlined.Map
 import androidx.compose.material.icons.outlined.MenuBook
-import androidx.compose.material.icons.outlined.ReportProblem
+import androidx.compose.material.icons.outlined.Science
 import androidx.compose.material.icons.outlined.Sos
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -46,13 +46,18 @@ import com.example.ui.screens.CrisisDetailScreen
 import com.example.ui.screens.CrisisListScreen
 import com.example.ui.screens.DashboardScreen
 import com.example.ui.screens.EmergencyKitScreen
+import com.example.ui.screens.EncyclopediaDetailScreen
+import com.example.ui.screens.EncyclopediaScreen
 import com.example.ui.screens.FamilyScreen
-import com.example.ui.screens.MapScreen
+import com.example.ui.screens.FirstAidDetailScreen
+import com.example.ui.screens.MavaRootScreen
 import com.example.ui.screens.OnboardingScreen
+import com.example.ui.screens.ScenarioLabScreen
 import com.example.ui.screens.SettingsScreen
 import com.example.ui.screens.SosScreen
 import com.example.ui.screens.TrainingScreen
-import com.example.ui.screens.UrbanReportScreen
+import com.example.ui.screens.VirtualLabScreen
+import com.example.ui.screens.WhyItHappensScreen
 import com.example.ui.theme.EmergencyRed
 import com.example.ui.viewmodel.AppViewModelProvider
 import com.example.ui.viewmodel.CrisisGuideViewModel
@@ -60,8 +65,9 @@ import com.example.ui.viewmodel.DashboardViewModel
 import com.example.ui.viewmodel.FamilyViewModel
 import com.example.ui.viewmodel.KitViewModel
 import com.example.ui.viewmodel.MainAppViewModel
-import com.example.ui.viewmodel.MapViewModel
-import com.example.ui.viewmodel.ReportViewModel
+import com.example.ui.viewmodel.MavaViewModel
+import com.example.ui.viewmodel.ScenarioLabViewModel
+import com.example.ui.viewmodel.ScienceViewModel
 import com.example.ui.viewmodel.SettingsViewModel
 import com.example.ui.viewmodel.SosViewModel
 import com.example.ui.viewmodel.TrainingViewModel
@@ -84,8 +90,8 @@ fun HamyarBohranApp(
 
     if (!settings.onboardingCompleted) {
         OnboardingScreen(
-            onCompleteOnboarding = { name, city, consent ->
-                mainViewModel.completeOnboarding(name, city, consent)
+            onCompleteOnboarding = { name, city ->
+                mainViewModel.completeOnboarding(name, city)
             }
         )
         return
@@ -96,16 +102,17 @@ fun HamyarBohranApp(
     val currentDestination = backStackEntry?.destination
 
     val topLevelItems = listOf(
-        TopNavItem(AppRoute.Dashboard, "داشبورد", Icons.Filled.Home, Icons.Outlined.Home, "nav_dashboard"),
+        TopNavItem(AppRoute.Dashboard, "خانه", Icons.Filled.Home, Icons.Outlined.Home, "nav_dashboard"),
         TopNavItem(AppRoute.CrisisSelection, "بحران‌ها", Icons.Filled.MenuBook, Icons.Outlined.MenuBook, "nav_crises"),
         TopNavItem(AppRoute.Sos, "کمک فوری", Icons.Filled.Sos, Icons.Outlined.Sos, "nav_sos", isEmergency = true),
-        TopNavItem(AppRoute.Map, "نقشه", Icons.Filled.Map, Icons.Outlined.Map, "nav_map"),
-        TopNavItem(AppRoute.UrbanReports, "گزارش", Icons.Filled.ReportProblem, Icons.Outlined.ReportProblem, "nav_reports")
+        TopNavItem(AppRoute.Encyclopedia, "دانشنامه", Icons.Filled.Science, Icons.Outlined.Science, "nav_encyclopedia"),
+        TopNavItem(AppRoute.Mava, "مأوا", Icons.Filled.ChildCare, Icons.Outlined.ChildCare, "nav_mava")
     )
 
-    val showTopLevelChrome = currentDestination?.let { dest ->
-        topLevelItems.any { item -> dest.hasRoute(item.route::class) }
-    } ?: true
+    val isInMava = currentDestination?.hasRoute(AppRoute.Mava::class) == true
+    val showTopLevelChrome = !isInMava && (currentDestination?.let { dest ->
+        topLevelItems.any { item -> item.route != AppRoute.Mava && dest.hasRoute(item.route::class) }
+    } ?: true)
 
     fun navigateTopLevel(route: AppRoute) {
         navController.navigate(route) {
@@ -201,11 +208,14 @@ fun HamyarBohranApp(
                             uiState = uiState,
                             onNavigateToSos = { navigateTopLevel(AppRoute.Sos) },
                             onNavigateToCrises = { navigateTopLevel(AppRoute.CrisisSelection) },
-                            onNavigateToMap = { navigateTopLevel(AppRoute.Map) },
+                            onNavigateToTraining = { navController.navigate(AppRoute.Training) },
+                            onNavigateToEncyclopedia = { navigateTopLevel(AppRoute.Encyclopedia) },
+                            onNavigateToWhyItHappens = { navController.navigate(AppRoute.WhyItHappens) },
+                            onNavigateToVirtualLab = { navController.navigate(AppRoute.VirtualLab) },
+                            onNavigateToScenarioLab = { navController.navigate(AppRoute.ScenarioLab) },
                             onNavigateToFamily = { navController.navigate(AppRoute.Family) },
                             onNavigateToKit = { navController.navigate(AppRoute.EmergencyKit) },
-                            onNavigateToTraining = { navController.navigate(AppRoute.Training) },
-                            onNavigateToReports = { navigateTopLevel(AppRoute.UrbanReports) },
+                            onNavigateToMava = { navController.navigate(AppRoute.Mava) },
                             onNavigateToSettings = { navController.navigate(AppRoute.Settings) }
                         )
                     }
@@ -247,27 +257,12 @@ fun HamyarBohranApp(
                         SosScreen(
                             uiState = uiState,
                             onSelectType = vm::selectEmergencyType,
+                            onUpdateAddressNote = vm::updateAddressNote,
                             onUpdateNote = vm::updateCustomNote,
-                            onSetIncludeLocation = vm::setIncludeLocation,
-                            onFetchLocation = vm::fetchLocation,
                             onSubmitSos = vm::submitSosRequest,
                             onMarkShared = vm::markShared,
                             onSyncQueued = vm::syncQueuedNow,
                             onDeleteRequest = vm::deleteRequest
-                        )
-                    }
-
-                    composable<AppRoute.Map> {
-                        val vm: MapViewModel = viewModel(factory = AppViewModelProvider.Factory)
-                        val uiState by vm.uiState.collectAsStateWithLifecycle()
-                        MapScreen(
-                            uiState = uiState,
-                            onSelectFilter = vm::selectFilter,
-                            onSelectShelter = vm::selectShelter,
-                            onFetchLocation = vm::fetchUserLocation,
-                            onAddSafePoint = vm::addPersonalSafePoint,
-                            onDeleteShelter = vm::deleteShelter,
-                            onRefreshOfflineSnapshot = vm::refreshOfflineSnapshot
                         )
                     }
 
@@ -306,6 +301,29 @@ fun HamyarBohranApp(
                         TrainingScreen(
                             uiState = uiState,
                             isOnline = isOnline,
+                            onOpenLessonDetail = { lessonId ->
+                                navController.navigate(AppRoute.FirstAidDetail(lessonId))
+                            },
+                            onStartQuiz = vm::startQuiz,
+                            onSelectAnswer = vm::selectAnswer,
+                            onNextQuestion = vm::nextQuestion,
+                            onCloseQuiz = vm::closeQuiz,
+                            onBack = { navController.popBackStack() }
+                        )
+                    }
+
+                    composable<AppRoute.FirstAidDetail> { entry ->
+                        val route = entry.toRoute<AppRoute.FirstAidDetail>()
+                        val vm: TrainingViewModel = viewModel(factory = AppViewModelProvider.Factory)
+                        val uiState by vm.uiState.collectAsStateWithLifecycle()
+                        val lesson = vm.getLessonById(route.lessonId) ?: return@composable
+                        FirstAidDetailScreen(
+                            lesson = lesson,
+                            uiState = uiState,
+                            onDownloadVideo = vm::downloadLessonVideo,
+                            onImportLocalVideo = vm::importLocalLessonVideo,
+                            onDeleteOfflineVideo = vm::removeOfflineVideo,
+                            onDismissBanner = vm::dismissMediaBanner,
                             onStartQuiz = vm::startQuiz,
                             onSelectAnswer = vm::selectAnswer,
                             onNextQuestion = vm::nextQuestion,
@@ -317,18 +335,87 @@ fun HamyarBohranApp(
                         )
                     }
 
-                    composable<AppRoute.UrbanReports> {
-                        val vm: ReportViewModel = viewModel(factory = AppViewModelProvider.Factory)
+                    composable<AppRoute.Encyclopedia> {
+                        val vm: ScienceViewModel = viewModel(factory = AppViewModelProvider.Factory)
                         val uiState by vm.uiState.collectAsStateWithLifecycle()
-                        UrbanReportScreen(
+                        EncyclopediaScreen(
                             uiState = uiState,
-                            onSelectFilter = vm::selectFilter,
-                            onFetchLocation = vm::fetchLocationForReport,
-                            onSubmitReport = vm::submitReport,
-                            onSyncQueued = vm::syncQueuedReports,
-                            onDeleteReport = vm::deleteReport,
-                            onDismissBanner = vm::dismissBanner,
-                            onBack = { navigateTopLevel(AppRoute.Dashboard) }
+                            isOnline = isOnline,
+                            onSearchChange = vm::updateSearch,
+                            onSelectCategory = vm::selectCategory,
+                            onOpenTopic = { topicId ->
+                                navController.navigate(AppRoute.EncyclopediaDetail(topicId))
+                            },
+                            onOpenWhyItHappens = {
+                                navController.navigate(AppRoute.WhyItHappens)
+                            }
+                        )
+                    }
+
+                    composable<AppRoute.EncyclopediaDetail> { entry ->
+                        val route = entry.toRoute<AppRoute.EncyclopediaDetail>()
+                        val vm: ScienceViewModel = viewModel(factory = AppViewModelProvider.Factory)
+                        val uiState by vm.uiState.collectAsStateWithLifecycle()
+                        val topic = vm.getTopicById(route.topicId) ?: return@composable
+                        val questions = vm.getQuestionsForTopic(topic.quizTopicId)
+                        EncyclopediaDetailScreen(
+                            topic = topic,
+                            questions = questions,
+                            selectedAnswers = uiState.selectedQuizAnswers,
+                            isOnline = isOnline,
+                            onAnswerQuiz = vm::answerInlineQuiz,
+                            onResetQuiz = vm::resetInlineQuiz,
+                            onBack = { navController.popBackStack() }
+                        )
+                    }
+
+                    composable<AppRoute.WhyItHappens> {
+                        val vm: ScienceViewModel = viewModel(factory = AppViewModelProvider.Factory)
+                        val uiState by vm.uiState.collectAsStateWithLifecycle()
+                        WhyItHappensScreen(
+                            uiState = uiState,
+                            isOnline = isOnline,
+                            onAnswerQuiz = vm::answerInlineQuiz,
+                            onResetQuiz = vm::resetInlineQuiz,
+                            onBack = { navController.popBackStack() }
+                        )
+                    }
+
+                    composable<AppRoute.VirtualLab> {
+                        VirtualLabScreen(
+                            isOnline = isOnline,
+                            onBack = { navController.popBackStack() }
+                        )
+                    }
+
+                    composable<AppRoute.ScenarioLab> {
+                        val vm: ScenarioLabViewModel = viewModel(factory = AppViewModelProvider.Factory)
+                        val uiState by vm.uiState.collectAsStateWithLifecycle()
+                        ScenarioLabScreen(
+                            uiState = uiState,
+                            isOnline = isOnline,
+                            onSelectScenario = vm::selectScenario,
+                            onChooseOption = vm::chooseOption,
+                            onRetry = vm::retryCurrent,
+                            onBack = { navController.popBackStack() }
+                        )
+                    }
+
+                    composable<AppRoute.Mava> {
+                        val vm: MavaViewModel = viewModel(factory = AppViewModelProvider.Factory)
+                        val uiState by vm.uiState.collectAsStateWithLifecycle()
+                        MavaRootScreen(
+                            uiState = uiState,
+                            onUpdateSettings = vm::updateSettings,
+                            onPlayTone = vm::playTone,
+                            onPlayHappyTone = vm::playHappyTone,
+                            onPlayLullabyStep = vm::playLullabyStep,
+                            onImportLocalCartoon = vm::importLocalCartoonVideo,
+                            onRemoveOfflineCartoon = vm::removeOfflineCartoon,
+                            onDismissNote = vm::dismissNote,
+                            onExitMava = {
+                                navController.popBackStack(AppRoute.Dashboard, inclusive = false)
+                            }
                         )
                     }
 

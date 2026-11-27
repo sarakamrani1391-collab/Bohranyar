@@ -1,15 +1,14 @@
 <resources>
     <string name="app_name">همیار بحران</string>
-    <string name="app_subtitle">دستیار هوشمند مدیریت بحران و امداد</string>
-    <string name="nav_dashboard">داشبورد</string>
+    <string name="app_subtitle">آموزش علمی، آمادگی بحران و پناهگاه آرام مأوا</string>
+    <string name="nav_dashboard">خانه</string>
     <string name="nav_crises">بحران‌ها</string>
-    <string name="nav_sos">کمک اضطراری</string>
-    <string name="nav_map">نقشه</string>
-    <string name="nav_more">امکانات</string>
-    <string name="offline_mode_active">حالت آفلاین فعال است — اطلاعات ضروری در دسترس شماست</string>
+    <string name="nav_sos">کمک فوری</string>
+    <string name="nav_science">دانشنامه</string>
+    <string name="nav_mava">مأوا</string>
+    <string name="offline_mode_active">حالت آفلاین فعال است — محتوای آموزشی و اضطراری در دسترس شماست</string>
     <string name="online_mode_active">اتصال اینترنت برقرار است</string>
-    <string name="demo_data_badge">داده آزمایشی / نمونه</string>
-    <string name="unverified_report_badge">گزارش مردمی تأییدنشده</string>
     <string name="sos_button_label">درخواست کمک اضطراری</string>
-    <string name="location_rationale">برای ثبت دقیق موقعیت شما روی نقشه و ارسال مختصات در درخواست کمک اضطراری، دسترسی به موقعیت مکانی تنها با اجازه شما استفاده می‌شود.</string>
+    <string name="mava_title">مأوا</string>
+    <string name="mava_tagline">دنیای کوچک آرامش و لبخند</string>
 </resources>
