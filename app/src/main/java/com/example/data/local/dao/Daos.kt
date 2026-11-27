@@ -99,6 +99,17 @@ interface SosRequestDao {
     @Query("UPDATE sos_requests SET status = :status WHERE id = :id")
     suspend fun updateStatus(id: Int, status: SosStatus)
 
+    @Query(
+        "UPDATE sos_requests SET latitude = :latitude, longitude = :longitude, locationConsentGiven = :consent, message = :message WHERE id = :id"
+    )
+    suspend fun updateLocationAndMessage(
+        id: Int,
+        latitude: Double?,
+        longitude: Double?,
+        consent: Boolean,
+        message: String
+    )
+
     @Query("DELETE FROM sos_requests WHERE id = :id")
     suspend fun deleteById(id: Int)
 }

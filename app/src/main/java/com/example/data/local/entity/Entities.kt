@@ -18,8 +18,10 @@ enum class FamilySafetyStatus(val titleFa: String) {
 
 enum class SosStatus(val titleFa: String) {
     QUEUED_OFFLINE("در صف ارسال آفلاین"),
-    SENT_SYNCED("آماده / ثبت‌شده آنلاین"),
-    SHARED_BY_USER("ارسال‌شده از طریق پیامک/تماس")
+    SENT_SYNCED("فعال / ثبت‌شده آنلاین"),
+    SHARED_BY_USER("ارسال‌شده از طریق پیامک/تماس"),
+    RESOLVED("خاتمه‌یافته / حل شد"),
+    CANCELLED("لغوشده")
 }
 
 enum class MediaCategory {

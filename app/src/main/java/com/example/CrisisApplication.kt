@@ -12,6 +12,7 @@ import com.example.data.repository.ScienceAndLabRepository
 import com.example.data.repository.SosRepository
 import com.example.data.repository.TrainingRepository
 import com.example.data.system.NetworkMonitor
+import com.example.data.system.SosLocationTracker
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -24,6 +25,7 @@ class AppContainer(application: Application) {
 
     val preferencesRepository = UserPreferencesRepository(application)
     val networkMonitor = NetworkMonitor(application)
+    val sosLocationTracker = SosLocationTracker(application)
 
     val crisisRepository = CrisisRepository(database.crisisChecklistDao())
     val kitRepository = KitRepository(database.emergencyKitDao())

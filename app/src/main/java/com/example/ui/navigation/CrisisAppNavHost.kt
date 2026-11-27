@@ -256,10 +256,17 @@ fun HamyarBohranApp(
                         val uiState by vm.uiState.collectAsStateWithLifecycle()
                         SosScreen(
                             uiState = uiState,
+                            onSelectCrisisType = vm::selectCrisisType,
                             onSelectType = vm::selectEmergencyType,
                             onUpdateAddressNote = vm::updateAddressNote,
                             onUpdateNote = vm::updateCustomNote,
+                            onToggleContact = vm::toggleContactSelection,
+                            onSetLocationConsent = vm::setLocationConsent,
+                            onLocationPermissionResult = vm::onLocationPermissionResult,
                             onSubmitSos = vm::submitSosRequest,
+                            onStopLocationSharing = vm::stopLocationSharing,
+                            onResolveSos = vm::resolveActiveSos,
+                            onCancelSos = vm::cancelActiveSos,
                             onMarkShared = vm::markShared,
                             onSyncQueued = vm::syncQueuedNow,
                             onDeleteRequest = vm::deleteRequest

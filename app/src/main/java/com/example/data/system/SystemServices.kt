@@ -1,6 +1,12 @@
 package com.example.data.system
 
+import android.Manifest
+import android.annotation.SuppressLint
 import android.content.Context
+import android.content.pm.PackageManager
+import android.location.Location
+import android.location.LocationListener
+import android.location.LocationManager
 import android.media.AudioAttributes
 import android.media.AudioFormat
 import android.media.AudioTrack
@@ -9,6 +15,8 @@ import android.net.Network
 import android.net.NetworkCapabilities
 import android.net.NetworkRequest
 import android.net.Uri
+import android.os.Looper
+import androidx.core.content.ContextCompat
 import com.example.data.local.entity.MediaCategory
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -215,4 +223,183 @@ object PersianTimeFormatter {
             }
         }
     }
+}
+
+data class EmergencyLocationSnapshot(
+    val latitude: Double,
+    val longitude: Double,
+    val accuracyMeters: Float? = null,
+    val provider: String = "",
+    val updatedAtMillis: Long = System.currentTimeMillis()
+)
+
+enum class SosLocationStatus(val titleFa: String) {
+    IDLE("غیرفعال (فقط در وضعیت اضطراری فعال می‌شود)"),
+    ACQUIRING("در حال دریافت موقعیت لحظه‌ای..."),
+    ACTIVE("اشتراک‌گذاری موقعیت لحظه‌ای فعال است"),
+    PERMISSION_DENIED("دسترسی موقعیت مکانی داده نشده است"),
+    GPS_UNAVAILABLE("GPS یا سرویس موقعیت‌یاب دستگاه در دسترس نیست")
+}
+
+/**
+ * Foreground-only, SOS-scoped location tracker.
+ * Never collects or monitors location outside an active, user-consented SOS session.
+ */
+class SosLocationTracker(private val context: Context) {
+    private val locationManager: LocationManager? =
+        runCatching { context.getSystemService(Context.LOCATION_SERVICE) as? LocationManager }.getOrNull()
+
+    private val _currentLocation = MutableStateFlow<EmergencyLocationSnapshot?>(null)
+    val currentLocation: StateFlow<EmergencyLocationSnapshot?> = _currentLocation.asStateFlow()
+
+    private val _status = MutableStateFlow(SosLocationStatus.IDLE)
+    val status: StateFlow<SosLocationStatus> = _status.asStateFlow()
+
+    private val _isTracking = MutableStateFlow(false)
+    val isTracking: StateFlow<Boolean> = _isTracking.asStateFlow()
+
+    private var activeListener: LocationListener? = null
+
+    fun hasLocationPermission(): Boolean {
+        val fine = ContextCompat.checkSelfPermission(
+            context,
+            Manifest.permission.ACCESS_FINE_LOCATION
+        ) == PackageManager.PERMISSION_GRANTED
+        val coarse = ContextCompat.checkSelfPermission(
+            context,
+            Manifest.permission.ACCESS_COARSE_LOCATION
+        ) == PackageManager.PERMISSION_GRANTED
+        return fine || coarse
+    }
+
+    fun isAnyProviderEnabled(): Boolean {
+        val lm = locationManager ?: return false
+        val gps = runCatching { lm.isProviderEnabled(LocationManager.GPS_PROVIDER) }.getOrDefault(false)
+        val net = runCatching { lm.isProviderEnabled(LocationManager.NETWORK_PROVIDER) }.getOrDefault(false)
+        return gps || net
+    }
+
+    @SuppressLint("MissingPermission")
+    fun startTracking() {
+        if (!hasLocationPermission()) {
+            stopTracking(SosLocationStatus.PERMISSION_DENIED)
+            return
+        }
+        val lm = locationManager
+        if (lm == null || !isAnyProviderEnabled()) {
+            // Try reading any cached last-known location safely before reporting unavailable
+            val cached = readBestLastKnownLocation(lm)
+            if (cached != null) {
+                _currentLocation.value = cached
+            }
+            _isTracking.value = false
+            _status.value = SosLocationStatus.GPS_UNAVAILABLE
+            return
+        }
+
+        // Stop any previous listener cleanly before attaching
+        removeActiveListener()
+        _isTracking.value = true
+        _status.value = SosLocationStatus.ACQUIRING
+
+        readBestLastKnownLocation(lm)?.let { snapshot ->
+            _currentLocation.value = snapshot
+            _status.value = SosLocationStatus.ACTIVE
+        }
+
+        val listener = object : LocationListener {
+            override fun onLocationChanged(location: Location) {
+                _currentLocation.value = location.toSnapshot()
+                _status.value = SosLocationStatus.ACTIVE
+            }
+
+            override fun onProviderDisabled(provider: String) {
+                if (!isAnyProviderEnabled()) {
+                    _status.value = SosLocationStatus.GPS_UNAVAILABLE
+                }
+            }
+
+            override fun onProviderEnabled(provider: String) {
+                if (_isTracking.value && _currentLocation.value == null) {
+                    _status.value = SosLocationStatus.ACQUIRING
+                }
+            }
+        }
+        activeListener = listener
+
+        var registeredAny = false
+        for (provider in listOf(LocationManager.GPS_PROVIDER, LocationManager.NETWORK_PROVIDER)) {
+            val enabled = runCatching { lm.isProviderEnabled(provider) }.getOrDefault(false)
+            if (enabled) {
+                val ok = runCatching {
+                    lm.requestLocationUpdates(
+                        provider,
+                        8_000L,
+                        5f,
+                        listener,
+                        Looper.getMainLooper()
+                    )
+                    true
+                }.getOrDefault(false)
+                if (ok) registeredAny = true
+            }
+        }
+
+        if (!registeredAny) {
+            _isTracking.value = false
+            _status.value = SosLocationStatus.GPS_UNAVAILABLE
+        }
+    }
+
+    @SuppressLint("MissingPermission")
+    fun refreshSnapshot(): EmergencyLocationSnapshot? {
+        if (!_isTracking.value || !hasLocationPermission()) return _currentLocation.value
+        val latest = readBestLastKnownLocation(locationManager)
+        if (latest != null) {
+            _currentLocation.value = latest
+            _status.value = SosLocationStatus.ACTIVE
+        } else if (!isAnyProviderEnabled()) {
+            _status.value = SosLocationStatus.GPS_UNAVAILABLE
+        }
+        return _currentLocation.value
+    }
+
+    fun markPermissionDenied() {
+        stopTracking(SosLocationStatus.PERMISSION_DENIED)
+    }
+
+    fun stopTracking(nextStatus: SosLocationStatus = SosLocationStatus.IDLE) {
+        removeActiveListener()
+        _isTracking.value = false
+        _status.value = nextStatus
+    }
+
+    private fun removeActiveListener() {
+        val listener = activeListener ?: return
+        runCatching { locationManager?.removeUpdates(listener) }
+        activeListener = null
+    }
+
+    @SuppressLint("MissingPermission")
+    private fun readBestLastKnownLocation(lm: LocationManager?): EmergencyLocationSnapshot? {
+        if (lm == null || !hasLocationPermission()) return null
+        val candidates = listOf(
+            LocationManager.GPS_PROVIDER,
+            LocationManager.NETWORK_PROVIDER,
+            LocationManager.PASSIVE_PROVIDER
+        ).mapNotNull { provider ->
+            runCatching { lm.getLastKnownLocation(provider) }.getOrNull()
+        }
+        val best = candidates.maxByOrNull { it.time } ?: return null
+        return best.toSnapshot()
+    }
+
+    private fun Location.toSnapshot(): EmergencyLocationSnapshot =
+        EmergencyLocationSnapshot(
+            latitude = latitude,
+            longitude = longitude,
+            accuracyMeters = if (hasAccuracy()) accuracy else null,
+            provider = provider.orEmpty(),
+            updatedAtMillis = System.currentTimeMillis()
+        )
 }

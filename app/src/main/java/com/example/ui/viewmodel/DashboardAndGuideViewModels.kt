@@ -58,8 +58,10 @@ object AppViewModelProvider {
             val c = appContainer()
             SosViewModel(
                 sosRepository = c.sosRepository,
+                familyRepository = c.familyRepository,
                 preferencesRepository = c.preferencesRepository,
-                networkMonitor = c.networkMonitor
+                networkMonitor = c.networkMonitor,
+                locationTracker = c.sosLocationTracker
             )
         }
         initializer {

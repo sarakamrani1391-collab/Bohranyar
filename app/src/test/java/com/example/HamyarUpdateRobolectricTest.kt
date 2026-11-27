@@ -1,6 +1,8 @@
 package com.example
 
+import android.Manifest
 import android.content.Context
+import android.content.pm.PackageManager
 import android.database.sqlite.SQLiteDatabase
 import androidx.sqlite.db.SupportSQLiteDatabase
 import androidx.sqlite.db.framework.FrameworkSQLiteOpenHelperFactory
@@ -8,10 +10,16 @@ import androidx.test.core.app.ApplicationProvider
 import com.example.data.local.AppDatabase
 import com.example.data.local.entity.MavaSettingsEntity
 import com.example.data.local.entity.MediaDownloadStatus
+import com.example.data.model.CrisisType
 import com.example.data.model.ScienceCategory
 import com.example.data.seed.CrisisContentSeed
 import com.example.data.seed.MavaContentSeed
 import com.example.data.seed.ScienceAndLabSeed
+import com.example.data.system.EmergencyLocationSnapshot
+import com.example.data.system.SosLocationStatus
+import com.example.data.system.SosLocationTracker
+import com.example.ui.viewmodel.EmergencyRecipient
+import com.example.ui.viewmodel.SosUiState
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
@@ -120,5 +128,57 @@ class HamyarUpdateRobolectricTest {
 
         helper.close()
         dbFile.delete()
+    }
+
+    @Test
+    fun `manifest declares foreground location only and no background location`() {
+        val context = ApplicationProvider.getApplicationContext<Context>()
+        val packageInfo = context.packageManager.getPackageInfo(
+            context.packageName,
+            PackageManager.GET_PERMISSIONS
+        )
+        val permissions = packageInfo.requestedPermissions?.toSet() ?: emptySet()
+        assertTrue(permissions.contains(Manifest.permission.ACCESS_FINE_LOCATION))
+        assertTrue(permissions.contains(Manifest.permission.ACCESS_COARSE_LOCATION))
+        assertFalse(permissions.contains(Manifest.permission.ACCESS_BACKGROUND_LOCATION))
+    }
+
+    @Test
+    fun `sos location tracker starts idle and handles denied permission without crashing`() {
+        val context = ApplicationProvider.getApplicationContext<Context>()
+        val tracker = SosLocationTracker(context)
+        assertFalse(tracker.isTracking.value)
+        assertEquals(SosLocationStatus.IDLE, tracker.status.value)
+
+        // Without granted runtime permission, startTracking fails safely to PERMISSION_DENIED
+        tracker.startTracking()
+        assertFalse(tracker.isTracking.value)
+        assertEquals(SosLocationStatus.PERMISSION_DENIED, tracker.status.value)
+
+        tracker.stopTracking()
+        assertFalse(tracker.isTracking.value)
+        assertEquals(SosLocationStatus.IDLE, tracker.status.value)
+    }
+
+    @Test
+    fun `sos ui state includes crisis type, address note, live gps coords, and selected contacts`() {
+        val uiState = SosUiState(
+            selectedCrisisType = CrisisType.FLOOD,
+            selectedEmergencyType = "درخواست امداد فوری",
+            addressNote = "خیابان آزادی، پلاک ۱۲",
+            locationConsentGiven = true,
+            liveLocation = EmergencyLocationSnapshot(latitude = 35.69971, longitude = 51.33806),
+            availableContacts = listOf(
+                EmergencyRecipient("member_1", "علی", "برادر", "09121112233"),
+                EmergencyRecipient("member_2", "سارا", "مادر", "09124445566")
+            ),
+            selectedContactIds = setOf("member_2")
+        )
+        assertEquals("09124445566", uiState.buildSelectedContactPhones())
+        val sms = uiState.buildPreparedSmsText()
+        assertTrue(sms.contains("سیل"))
+        assertTrue(sms.contains("خیابان آزادی، پلاک ۱۲"))
+        assertTrue(sms.contains("35.69971, 51.33806"))
+        assertTrue(sms.contains("https://maps.google.com/?q=35.69971,51.33806"))
     }
 }

@@ -158,15 +158,18 @@ class SosRepository(
     suspend fun createSosRequest(
         emergencyType: String,
         message: String,
-        isOnline: Boolean
+        isOnline: Boolean,
+        latitude: Double? = null,
+        longitude: Double? = null,
+        locationConsentGiven: Boolean = false
     ): SosRequestEntity {
         val status = if (isOnline) SosStatus.SENT_SYNCED else SosStatus.QUEUED_OFFLINE
         val entity = SosRequestEntity(
             emergencyType = emergencyType,
             message = message,
-            latitude = null,
-            longitude = null,
-            locationConsentGiven = false,
+            latitude = latitude,
+            longitude = longitude,
+            locationConsentGiven = locationConsentGiven,
             status = status,
             createdAtMillis = System.currentTimeMillis()
         )
@@ -174,8 +177,32 @@ class SosRepository(
         return entity.copy(id = newId)
     }
 
+    suspend fun updateSosLocationAndMessage(
+        id: Int,
+        latitude: Double?,
+        longitude: Double?,
+        locationConsentGiven: Boolean,
+        updatedMessage: String
+    ) {
+        sosDao.updateLocationAndMessage(
+            id = id,
+            latitude = latitude,
+            longitude = longitude,
+            consent = locationConsentGiven,
+            message = updatedMessage
+        )
+    }
+
     suspend fun markSharedByUser(id: Int) {
         sosDao.updateStatus(id, SosStatus.SHARED_BY_USER)
+    }
+
+    suspend fun resolveSosRequest(id: Int) {
+        sosDao.updateStatus(id, SosStatus.RESOLVED)
+    }
+
+    suspend fun cancelSosRequest(id: Int) {
+        sosDao.updateStatus(id, SosStatus.CANCELLED)
     }
 
     suspend fun syncQueuedRequests() {

@@ -1,5 +1,10 @@
 package com.example.ui.screens
 
+import android.Manifest
+import android.content.Intent
+import android.provider.Settings
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
@@ -20,9 +25,15 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Cancel
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.CloudOff
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.GpsFixed
+import androidx.compose.material.icons.filled.GpsOff
+import androidx.compose.material.icons.filled.LocationOff
+import androidx.compose.material.icons.filled.LocationOn
+import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Phone
 import androidx.compose.material.icons.filled.Share
 import androidx.compose.material.icons.filled.Sms
@@ -42,6 +53,7 @@ import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
+import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.minimumInteractiveComponentSize
@@ -57,26 +69,37 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.example.data.local.entity.SosStatus
+import com.example.data.model.CrisisType
 import com.example.data.system.PersianTimeFormatter
+import com.example.data.system.SosLocationStatus
 import com.example.ui.components.HamyarTopBar
 import com.example.ui.components.StatusBadge
 import com.example.ui.components.dialNumber
 import com.example.ui.components.openSmsComposer
 import com.example.ui.components.shareEmergencyText
 import com.example.ui.theme.EmergencyRed
+import com.example.ui.theme.EmergencyRedSoft
 import com.example.ui.theme.SafeGreen
 import com.example.ui.theme.SafeGreenSoft
 import com.example.ui.theme.WarningAmber
 import com.example.ui.theme.WarningAmberSoft
 import com.example.ui.viewmodel.SosUiState
+import java.util.Locale
 
 @Composable
 fun SosScreen(
     uiState: SosUiState,
+    onSelectCrisisType: (CrisisType) -> Unit,
     onSelectType: (String) -> Unit,
     onUpdateAddressNote: (String) -> Unit,
     onUpdateNote: (String) -> Unit,
-    onSubmitSos: () -> Unit,
+    onToggleContact: (String) -> Unit,
+    onSetLocationConsent: (Boolean) -> Unit,
+    onLocationPermissionResult: (Boolean) -> Unit,
+    onSubmitSos: (Boolean) -> Unit,
+    onStopLocationSharing: () -> Unit,
+    onResolveSos: () -> Unit,
+    onCancelSos: () -> Unit,
     onMarkShared: (Int) -> Unit,
     onSyncQueued: () -> Unit,
     onDeleteRequest: (Int) -> Unit,
@@ -85,6 +108,20 @@ fun SosScreen(
 ) {
     val context = LocalContext.current
     var showConfirmDialog by rememberSaveable { mutableStateOf(false) }
+    var shareLocationWithActivation by rememberSaveable { mutableStateOf(true) }
+    var pendingSubmitAfterPermission by rememberSaveable { mutableStateOf(false) }
+
+    val locationPermissionLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestMultiplePermissions()
+    ) { result ->
+        val granted = result[Manifest.permission.ACCESS_FINE_LOCATION] == true ||
+            result[Manifest.permission.ACCESS_COARSE_LOCATION] == true
+        onLocationPermissionResult(granted)
+        if (pendingSubmitAfterPermission) {
+            pendingSubmitAfterPermission = false
+            onSubmitSos(granted)
+        }
+    }
 
     val emergencyTypes = listOf(
         "درخواست امداد فوری",
@@ -119,6 +156,41 @@ fun SosScreen(
                 contentPadding = PaddingValues(horizontal = 16.dp, vertical = 12.dp),
                 verticalArrangement = Arrangement.spacedBy(14.dp)
             ) {
+                // Active SOS Session & Live Location Sharing Status Banner
+                if (uiState.activeSosRequestId != null) {
+                    item {
+                        ActiveSosSessionCard(
+                            uiState = uiState,
+                            onSendLiveLocationSms = {
+                                val targetPhones = uiState.buildSelectedContactPhones()
+                                openSmsComposer(context, targetPhones, uiState.buildPreparedSmsText())
+                                onMarkShared(uiState.activeSosRequestId)
+                            },
+                            onRequestLocationPermission = {
+                                locationPermissionLauncher.launch(
+                                    arrayOf(
+                                        Manifest.permission.ACCESS_FINE_LOCATION,
+                                        Manifest.permission.ACCESS_COARSE_LOCATION
+                                    )
+                                )
+                            },
+                            onOpenLocationSettings = {
+                                runCatching {
+                                    context.startActivity(
+                                        Intent(Settings.ACTION_LOCATION_SOURCE_SETTINGS).apply {
+                                            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                                        }
+                                    )
+                                }
+                            },
+                            onStopLocationSharing = onStopLocationSharing,
+                            onResolveSos = onResolveSos,
+                            onCancelSos = onCancelSos
+                        )
+                    }
+                }
+
+                // Direct emergency dialing buttons
                 item {
                     Row(
                         modifier = Modifier.fillMaxWidth(),
@@ -166,6 +238,7 @@ fun SosScreen(
                     }
                 }
 
+                // SOS Form Card
                 item {
                     Card(
                         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
@@ -177,8 +250,35 @@ fun SosScreen(
                             verticalArrangement = Arrangement.spacedBy(12.dp)
                         ) {
                             Text(
-                                text = "۱. نوع وضعیت اضطراری",
+                                text = "۱. نوع بحران را انتخاب کنید",
                                 style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.Bold
+                            )
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .horizontalScroll(rememberScrollState()),
+                                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                            ) {
+                                CrisisType.entries.forEach { crisis ->
+                                    FilterChip(
+                                        selected = uiState.selectedCrisisType == crisis,
+                                        onClick = { onSelectCrisisType(crisis) },
+                                        label = { Text(crisis.titleFa) },
+                                        colors = FilterChipDefaults.filterChipColors(
+                                            selectedContainerColor = MaterialTheme.colorScheme.primary,
+                                            selectedLabelColor = MaterialTheme.colorScheme.onPrimary
+                                        ),
+                                        modifier = Modifier
+                                            .minimumInteractiveComponentSize()
+                                            .testTag("sos_crisis_${crisis.id}")
+                                    )
+                                }
+                            }
+
+                            Text(
+                                text = "۲. نوع نیاز اضطراری",
+                                style = MaterialTheme.typography.titleSmall,
                                 fontWeight = FontWeight.Bold
                             )
                             Row(
@@ -197,6 +297,100 @@ fun SosScreen(
                                             selectedLabelColor = MaterialTheme.colorScheme.onError
                                         ),
                                         modifier = Modifier.minimumInteractiveComponentSize()
+                                    )
+                                }
+                            }
+
+                            // Emergency Contacts Selection
+                            Text(
+                                text = "۳. مخاطبین اضطراری برای ارسال پیامک و موقعیت",
+                                style = MaterialTheme.typography.titleSmall,
+                                fontWeight = FontWeight.Bold
+                            )
+                            if (uiState.availableContacts.isEmpty()) {
+                                Surface(
+                                    color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f),
+                                    shape = RoundedCornerShape(12.dp)
+                                ) {
+                                    Text(
+                                        text = "هنوز مخاطب خانوادگی ثبت نشده است؛ می‌توانید از بخش «خانواده و نزدیکان» شماره اضافه کنید یا هنگام ارسال پیامک، گیرنده را دستی انتخاب کنید.",
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        modifier = Modifier.padding(10.dp)
+                                    )
+                                }
+                            } else {
+                                Row(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .horizontalScroll(rememberScrollState()),
+                                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                ) {
+                                    uiState.availableContacts.forEach { contact ->
+                                        val isSelected = contact.id in uiState.selectedContactIds
+                                        FilterChip(
+                                            selected = isSelected,
+                                            onClick = { onToggleContact(contact.id) },
+                                            leadingIcon = {
+                                                Icon(
+                                                    imageVector = Icons.Filled.Person,
+                                                    contentDescription = null,
+                                                    modifier = Modifier.size(16.dp)
+                                                )
+                                            },
+                                            label = { Text("${contact.name} (${contact.relation})") },
+                                            modifier = Modifier
+                                                .minimumInteractiveComponentSize()
+                                                .testTag("sos_contact_${contact.id}")
+                                        )
+                                    }
+                                }
+                            }
+
+                            // Consent Toggle for SOS-scoped Live Location Sharing
+                            Surface(
+                                color = if (uiState.locationConsentGiven) SafeGreenSoft else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.55f),
+                                shape = RoundedCornerShape(14.dp),
+                                border = BorderStroke(
+                                    1.dp,
+                                    if (uiState.locationConsentGiven) SafeGreen.copy(alpha = 0.35f) else MaterialTheme.colorScheme.outline.copy(alpha = 0.4f)
+                                )
+                            ) {
+                                Row(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(horizontal = 12.dp, vertical = 8.dp),
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.SpaceBetween
+                                ) {
+                                    Column(modifier = Modifier.weight(1f)) {
+                                        Text(
+                                            text = "اشتراک‌گذاری موقعیت لحظه‌ای در وضعیت اضطراری",
+                                            style = MaterialTheme.typography.labelLarge,
+                                            fontWeight = FontWeight.Bold
+                                        )
+                                        Text(
+                                            text = "موقعیت مکانی فقط هنگام فعال‌بودن درخواست SOS و با رضایت شما دریافت می‌شود؛ خارج از SOS هیچ ردیابی انجام نمی‌شود.",
+                                            style = MaterialTheme.typography.bodySmall,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                                        )
+                                    }
+                                    Spacer(modifier = Modifier.width(8.dp))
+                                    Switch(
+                                        checked = uiState.locationConsentGiven,
+                                        onCheckedChange = { checked ->
+                                            shareLocationWithActivation = checked
+                                            onSetLocationConsent(checked)
+                                            if (checked && !uiState.hasLocationPermission) {
+                                                locationPermissionLauncher.launch(
+                                                    arrayOf(
+                                                        Manifest.permission.ACCESS_FINE_LOCATION,
+                                                        Manifest.permission.ACCESS_COARSE_LOCATION
+                                                    )
+                                                )
+                                            }
+                                        },
+                                        modifier = Modifier.testTag("sos_location_consent_switch")
                                     )
                                 }
                             }
@@ -245,7 +439,10 @@ fun SosScreen(
                             }
 
                             Button(
-                                onClick = { showConfirmDialog = true },
+                                onClick = {
+                                    shareLocationWithActivation = uiState.locationConsentGiven || !uiState.hasLocationPermission
+                                    showConfirmDialog = true
+                                },
                                 colors = ButtonDefaults.buttonColors(
                                     containerColor = EmergencyRed,
                                     contentColor = MaterialTheme.colorScheme.onError
@@ -260,9 +457,9 @@ fun SosScreen(
                                 Spacer(modifier = Modifier.width(10.dp))
                                 Text(
                                     text = if (uiState.isOnline) {
-                                        "ثبت و آماده‌سازی درخواست کمک"
+                                        "ثبت و فعال‌سازی درخواست کمک (SOS)"
                                     } else {
-                                        "ثبت در صف آفلاین و ارسال پیام"
+                                        "ثبت در صف آفلاین و فعال‌سازی کمک"
                                     },
                                     style = MaterialTheme.typography.titleMedium,
                                     fontWeight = FontWeight.Bold
@@ -275,7 +472,11 @@ fun SosScreen(
                             ) {
                                 OutlinedButton(
                                     onClick = {
-                                        openSmsComposer(context, "", uiState.buildPreparedSmsText())
+                                        openSmsComposer(
+                                            context,
+                                            uiState.buildSelectedContactPhones(),
+                                            uiState.buildPreparedSmsText()
+                                        )
                                     },
                                     modifier = Modifier
                                         .weight(1f)
@@ -356,6 +557,8 @@ fun SosScreen(
                         SosStatus.QUEUED_OFFLINE -> Triple(WarningAmberSoft, WarningAmber, Icons.Filled.CloudOff)
                         SosStatus.SENT_SYNCED -> Triple(SafeGreenSoft, SafeGreen, Icons.Filled.CheckCircle)
                         SosStatus.SHARED_BY_USER -> Triple(SafeGreenSoft, SafeGreen, Icons.Filled.Sms)
+                        SosStatus.RESOLVED -> Triple(SafeGreenSoft, SafeGreen, Icons.Filled.CheckCircle)
+                        SosStatus.CANCELLED -> Triple(MaterialTheme.colorScheme.surfaceVariant, MaterialTheme.colorScheme.onSurfaceVariant, Icons.Filled.Cancel)
                     }
                     Card(
                         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
@@ -400,6 +603,18 @@ fun SosScreen(
                                 style = MaterialTheme.typography.titleSmall,
                                 fontWeight = FontWeight.Bold
                             )
+                            if (req.latitude != null && req.longitude != null) {
+                                Text(
+                                    text = String.format(
+                                        Locale.US,
+                                        "مختصات ثبت‌شده: %.5f, %.5f",
+                                        req.latitude,
+                                        req.longitude
+                                    ),
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = SafeGreen
+                                )
+                            }
                             Text(
                                 text = req.message,
                                 style = MaterialTheme.typography.bodySmall,
@@ -407,7 +622,7 @@ fun SosScreen(
                             )
                             OutlinedButton(
                                 onClick = {
-                                    openSmsComposer(context, "", req.message)
+                                    openSmsComposer(context, uiState.buildSelectedContactPhones(), req.message)
                                     onMarkShared(req.id)
                                 },
                                 modifier = Modifier.minimumInteractiveComponentSize()
@@ -426,26 +641,60 @@ fun SosScreen(
     if (showConfirmDialog) {
         AlertDialog(
             onDismissRequest = { showConfirmDialog = false },
-            title = { Text("تأیید ثبت درخواست کمک") },
+            title = { Text("فعال‌سازی درخواست کمک اضطراری") },
             text = {
-                Text(
-                    if (uiState.isOnline) {
-                        "درخواست شما با مشخصات انتخاب‌شده ثبت می‌شود. برای امداد فوری حتماً با ۱۱۲ یا ۱۱۵ نیز تماس بگیرید یا پیامک ارسال کنید."
-                    } else {
-                        "به دلیل عدم دسترسی به اینترنت، درخواست در حافظه دستگاه ذخیره می‌شود تا پس از برقراری اتصال همگام‌سازی گردد. همچنین می‌توانید بلافاصله با پیامک ارسال کنید."
+                Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                    Text(
+                        if (uiState.isOnline) {
+                            "درخواست SOS ثبت می‌شود. برای ارسال موقعیت لحظه‌ای به مخاطبین منتخب، مجوز موقعیت مکانی فقط برای همین جلسه اضطراری درخواست می‌شود."
+                        } else {
+                            "به دلیل قطع اینترنت، درخواست در صف آفلاین ثبت می‌شود و می‌توانید فوراً پیامک حاوی موقعیت مکانی خود را برای مخاطبین اضطراری ارسال کنید."
+                        }
+                    )
+                    Surface(
+                        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.65f),
+                        shape = RoundedCornerShape(12.dp)
+                    ) {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 10.dp, vertical = 6.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.SpaceBetween
+                        ) {
+                            Text(
+                                text = "اشتراک‌گذاری موقعیت لحظه‌ای GPS",
+                                style = MaterialTheme.typography.labelLarge,
+                                modifier = Modifier.weight(1f)
+                            )
+                            Switch(
+                                checked = shareLocationWithActivation,
+                                onCheckedChange = { shareLocationWithActivation = it }
+                            )
+                        }
                     }
-                )
+                }
             },
             confirmButton = {
                 Button(
                     onClick = {
-                        onSubmitSos()
                         showConfirmDialog = false
+                        if (shareLocationWithActivation && !uiState.hasLocationPermission) {
+                            pendingSubmitAfterPermission = true
+                            locationPermissionLauncher.launch(
+                                arrayOf(
+                                    Manifest.permission.ACCESS_FINE_LOCATION,
+                                    Manifest.permission.ACCESS_COARSE_LOCATION
+                                )
+                            )
+                        } else {
+                            onSubmitSos(shareLocationWithActivation)
+                        }
                     },
                     colors = ButtonDefaults.buttonColors(containerColor = EmergencyRed),
                     modifier = Modifier.testTag("sos_confirm_dialog_button")
                 ) {
-                    Text("تأیید و ثبت")
+                    Text("تأیید و فعال‌سازی SOS")
                 }
             },
             dismissButton = {
@@ -454,5 +703,177 @@ fun SosScreen(
                 }
             }
         )
+    }
+}
+
+@Composable
+private fun ActiveSosSessionCard(
+    uiState: SosUiState,
+    onSendLiveLocationSms: () -> Unit,
+    onRequestLocationPermission: () -> Unit,
+    onOpenLocationSettings: () -> Unit,
+    onStopLocationSharing: () -> Unit,
+    onResolveSos: () -> Unit,
+    onCancelSos: () -> Unit
+) {
+    val isLive = uiState.isLocationSharingActive
+    val containerColor = when {
+        isLive -> SafeGreenSoft
+        uiState.locationStatus == SosLocationStatus.PERMISSION_DENIED ||
+            uiState.locationStatus == SosLocationStatus.GPS_UNAVAILABLE -> WarningAmberSoft
+        else -> EmergencyRedSoft
+    }
+    val accentColor = when {
+        isLive -> SafeGreen
+        uiState.locationStatus == SosLocationStatus.PERMISSION_DENIED ||
+            uiState.locationStatus == SosLocationStatus.GPS_UNAVAILABLE -> WarningAmber
+        else -> EmergencyRed
+    }
+
+    Card(
+        colors = CardDefaults.cardColors(containerColor = containerColor),
+        shape = RoundedCornerShape(20.dp),
+        border = BorderStroke(1.5.dp, accentColor.copy(alpha = 0.45f)),
+        modifier = Modifier
+            .fillMaxWidth()
+            .testTag("sos_active_session_banner")
+    ) {
+        Column(
+            modifier = Modifier.padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(10.dp)
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.weight(1f)) {
+                    Icon(
+                        imageVector = when {
+                            isLive -> Icons.Filled.GpsFixed
+                            uiState.locationStatus == SosLocationStatus.PERMISSION_DENIED -> Icons.Filled.LocationOff
+                            uiState.locationStatus == SosLocationStatus.GPS_UNAVAILABLE -> Icons.Filled.GpsOff
+                            else -> Icons.Filled.LocationOn
+                        },
+                        contentDescription = null,
+                        tint = accentColor,
+                        modifier = Modifier.size(22.dp)
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(
+                        text = if (isLive) {
+                            "وضعیت اضطراری فعال • اشتراک‌گذاری موقعیت لحظه‌ای روشن است"
+                        } else {
+                            "درخواست SOS فعال • ${uiState.locationStatus.titleFa}"
+                        },
+                        style = MaterialTheme.typography.titleSmall,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
+                }
+            }
+
+            if (isLive && uiState.liveLocation != null) {
+                val loc = uiState.liveLocation
+                val accuracy = loc.accuracyMeters?.let { " (دقت حدود ${it.toInt()} متر)" } ?: ""
+                Text(
+                    text = String.format(
+                        Locale.US,
+                        "مختصات زنده: %.5f, %.5f%s",
+                        loc.latitude,
+                        loc.longitude,
+                        accuracy
+                    ),
+                    style = MaterialTheme.typography.bodySmall,
+                    fontWeight = FontWeight.SemiBold,
+                    color = SafeGreen
+                )
+                Text(
+                    text = "به‌روزرسانی خودکار هر ۱۰ ثانیه تا زمان لغو یا حل وضعیت اضطراری فعال است.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            } else if (uiState.locationStatus == SosLocationStatus.PERMISSION_DENIED) {
+                Text(
+                    text = "دسترسی موقعیت مکانی رد شد. می‌توانید دوباره مجوز بدهید یا نشانی را به‌صورت متنی وارد و ارسال کنید.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+                OutlinedButton(
+                    onClick = onRequestLocationPermission,
+                    modifier = Modifier.minimumInteractiveComponentSize()
+                ) {
+                    Text("اعطای مجوز موقعیت مکانی")
+                }
+            } else if (uiState.locationStatus == SosLocationStatus.GPS_UNAVAILABLE) {
+                Text(
+                    text = "GPS یا موقعیت‌یاب دستگاه خاموش/خارج از دسترس است. برنامه بدون خطا با پیام متنی ادامه می‌دهد.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+                OutlinedButton(
+                    onClick = onOpenLocationSettings,
+                    modifier = Modifier.minimumInteractiveComponentSize()
+                ) {
+                    Text("باز کردن تنظیمات موقعیت‌یاب (GPS)")
+                }
+            }
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                Button(
+                    onClick = onSendLiveLocationSms,
+                    colors = ButtonDefaults.buttonColors(containerColor = EmergencyRed),
+                    shape = RoundedCornerShape(12.dp),
+                    modifier = Modifier
+                        .weight(1f)
+                        .minimumInteractiveComponentSize()
+                        .testTag("sos_send_live_sms_button")
+                ) {
+                    Icon(Icons.Filled.Sms, contentDescription = null, modifier = Modifier.size(16.dp))
+                    Spacer(modifier = Modifier.width(4.dp))
+                    Text("ارسال موقعیت به مخاطبین")
+                }
+                if (isLive) {
+                    OutlinedButton(
+                        onClick = onStopLocationSharing,
+                        shape = RoundedCornerShape(12.dp),
+                        modifier = Modifier
+                            .minimumInteractiveComponentSize()
+                            .testTag("sos_stop_location_button")
+                    ) {
+                        Text("توقف موقعیت")
+                    }
+                }
+            }
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                OutlinedButton(
+                    onClick = onResolveSos,
+                    shape = RoundedCornerShape(12.dp),
+                    modifier = Modifier
+                        .weight(1f)
+                        .minimumInteractiveComponentSize()
+                        .testTag("sos_resolve_button")
+                ) {
+                    Text("حل شد / پایان SOS")
+                }
+                OutlinedButton(
+                    onClick = onCancelSos,
+                    shape = RoundedCornerShape(12.dp),
+                    modifier = Modifier
+                        .weight(1f)
+                        .minimumInteractiveComponentSize()
+                        .testTag("sos_cancel_button")
+                ) {
+                    Text("لغو درخواست")
+                }
+            }
+        }
     }
 }
